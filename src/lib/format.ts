@@ -45,3 +45,10 @@ export function formatDate(value: Date | string): string {
   const [year, month, day] = match.slice(1).map(Number);
   return keyDateFormat.format(new Date(Date.UTC(year, month - 1, day)));
 }
+
+const monthFormat = new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+
+// "November 2026" for a calendar month.
+export function formatMonth(year: number, month1to12: number): string {
+  return monthFormat.format(new Date(Date.UTC(year, month1to12 - 1, 1)));
+}
