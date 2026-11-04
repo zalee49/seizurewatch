@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Seizure } from "@/lib/data/seizures";
+import type { MedicationChange } from "@/lib/data/medications";
 import { buildMonthGrid, monthLength, monthStats } from "./calendar";
 
 function seizureAt(iso: string): Seizure {
@@ -25,7 +26,7 @@ describe("buildMonthGrid", () => {
   it("fills exactly four weeks for a 28-day month starting on Sunday", () => {
     const { weeks } = buildMonthGrid(2026, 2, []);
     expect(weeks).toHaveLength(4);
-    expect(weeks[0][0]).toEqual({ key: "2026-02-01", dayOfMonth: 1, inMonth: true, count: 0 });
+    expect(weeks[0][0]).toEqual({ key: "2026-02-01", dayOfMonth: 1, inMonth: true, count: 0, medChanges: [] });
     expect(weeks[3][6].key).toBe("2026-02-28");
     expect(weeks.flat().every((day) => day.inMonth)).toBe(true);
   });
@@ -49,6 +50,27 @@ describe("buildMonthGrid", () => {
     const days = weeks.flat();
     expect(days.find((day) => day.key === "2026-11-04")?.count).toBe(2);
     expect(days.find((day) => day.key === "2026-11-05")?.count).toBe(1);
+  });
+});
+
+describe("buildMonthGrid medication changes", () => {
+  const change = (date: string): MedicationChange => ({
+    date,
+    drugName: "Phenobarbital",
+    kind: "changed",
+    description: "Phenobarbital changed",
+  });
+
+  it("puts a change on its own day only", () => {
+    const onDay = change("2026-11-10");
+    const days = buildMonthGrid(2026, 11, [], [onDay]).weeks.flat();
+    expect(days.find((day) => day.key === "2026-11-10")?.medChanges).toEqual([onDay]);
+    expect(days.filter((day) => day.medChanges.length > 0)).toHaveLength(1);
+  });
+
+  it("leaves a change from another month off every in-month day", () => {
+    const days = buildMonthGrid(2026, 11, [], [change("2026-10-10"), change("2026-12-10")]).weeks.flat();
+    expect(days.filter((day) => day.inMonth).every((day) => day.medChanges.length === 0)).toBe(true);
   });
 });
 

@@ -1,7 +1,14 @@
+import type { MedicationChange } from "@/lib/data/medications";
 import type { Seizure } from "@/lib/data/seizures";
 import { dayKey } from "@/lib/time";
 
-export type Day = { key: string; dayOfMonth: number; inMonth: boolean; count: number };
+export type Day = {
+  key: string;
+  dayOfMonth: number;
+  inMonth: boolean;
+  count: number;
+  medChanges: MedicationChange[];
+};
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -25,7 +32,12 @@ function countByDay(seizures: Seizure[]): Map<string, number> {
 }
 
 // Full Sunday-to-Saturday weeks covering the month; days from the neighbouring months have `inMonth: false`.
-export function buildMonthGrid(year: number, month1to12: number, seizures: Seizure[]): { weeks: Day[][] } {
+export function buildMonthGrid(
+  year: number,
+  month1to12: number,
+  seizures: Seizure[],
+  medChanges: MedicationChange[] = [],
+): { weeks: Day[][] } {
   const counts = countByDay(seizures);
   const first = Date.UTC(year, month1to12 - 1, 1);
   const last = Date.UTC(year, month1to12 - 1, monthLength(year, month1to12));
@@ -42,6 +54,7 @@ export function buildMonthGrid(year: number, month1to12: number, seizures: Seizu
       dayOfMonth: date.getUTCDate(),
       inMonth: date.getUTCMonth() === month1to12 - 1,
       count: counts.get(key) ?? 0,
+      medChanges: medChanges.filter((change) => change.date === key),
     });
   }
   return { weeks };

@@ -14,6 +14,8 @@ const KIND_OPTIONS = [
   { value: "other", label: "Other" },
 ] as const;
 
+type RescueMed = { drugName: string; doseAmount: number; doseUnit: string };
+
 function describe(response: SeizureResponse): string {
   if (response.kind === "rescue_med") {
     const dose = [response.doseAmount, response.doseUnit].filter((part) => part !== null).join(" ");
@@ -95,13 +97,19 @@ function ResponseItem({ response, seizureStartedAt }: { response: SeizureRespons
 function AddResponseForm({
   seizureId,
   defaultGivenAt,
+  rescueMeds,
   onDone,
 }: {
   seizureId: string;
   defaultGivenAt: string;
+  rescueMeds: RescueMed[];
   onDone: () => void;
 }) {
   const [kind, setKind] = useState<ResponseKind>("rescue_med");
+  // Controlled so a suggestion button can fill them; the form is never reset, so a refused save keeps them.
+  const [medicationName, setMedicationName] = useState("");
+  const [doseAmount, setDoseAmount] = useState("");
+  const [doseUnit, setDoseUnit] = useState("");
   const [state, formAction, pending] = useActionState(
     async (prev: SaveResult<SeizureResponse> | null, formData: FormData) => {
       const result = await addResponseAction(prev, formData);
@@ -134,6 +142,27 @@ function AddResponseForm({
 
       {kind === "rescue_med" ? (
         <>
+          {rescueMeds.length > 0 && (
+            <div>
+              <p className={labelClass}>Current rescue meds</p>
+              <div className="flex flex-col gap-2">
+                {rescueMeds.map((med) => (
+                  <button
+                    key={med.drugName}
+                    type="button"
+                    onClick={() => {
+                      setMedicationName(med.drugName);
+                      setDoseAmount(String(med.doseAmount));
+                      setDoseUnit(med.doseUnit);
+                    }}
+                    className="min-h-tap rounded-xl border-2 border-brand px-3 text-base font-semibold text-brand"
+                  >
+                    {med.drugName} {med.doseAmount} {med.doseUnit}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <div>
             <label htmlFor="medicationName" className={labelClass}>
               Medication
@@ -141,6 +170,8 @@ function AddResponseForm({
             <input
               id="medicationName"
               name="medicationName"
+              value={medicationName}
+              onChange={(event) => setMedicationName(event.target.value)}
               autoComplete="off"
               aria-describedby={errors.medicationName ? "medicationName-error" : undefined}
               className={inputClass}
@@ -155,6 +186,8 @@ function AddResponseForm({
               <input
                 id="doseAmount"
                 name="doseAmount"
+                value={doseAmount}
+                onChange={(event) => setDoseAmount(event.target.value)}
                 type="number"
                 inputMode="decimal"
                 step="any"
@@ -171,6 +204,8 @@ function AddResponseForm({
               <input
                 id="doseUnit"
                 name="doseUnit"
+                value={doseUnit}
+                onChange={(event) => setDoseUnit(event.target.value)}
                 placeholder="mg, mL"
                 autoComplete="off"
                 aria-describedby={errors.doseUnit ? "doseUnit-error" : undefined}
@@ -237,10 +272,12 @@ export default function Responses({
   seizureId,
   seizureStartedAt,
   responses,
+  rescueMeds,
 }: {
   seizureId: string;
   seizureStartedAt: Date;
   responses: SeizureResponse[];
+  rescueMeds: RescueMed[];
 }) {
   // Set when the form opens, so "When" starts at the time it was opened (minutes only).
   const [openedAt, setOpenedAt] = useState<string | null>(null);
@@ -260,7 +297,7 @@ export default function Responses({
         <p className="text-base text-muted">Nothing recorded yet.</p>
       )}
       {openedAt ? (
-        <AddResponseForm seizureId={seizureId} defaultGivenAt={openedAt} onDone={() => setOpenedAt(null)} />
+        <AddResponseForm seizureId={seizureId} defaultGivenAt={openedAt} rescueMeds={rescueMeds} onDone={() => setOpenedAt(null)} />
       ) : (
         <button
           type="button"

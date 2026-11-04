@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { connection } from "next/server";
 import { buildMonthGrid, monthLength, monthStats, type Day } from "@/lib/calendar";
+import { listMedicationChanges, type MedicationChange } from "@/lib/data/medications";
 import { listSeizuresBetween, type Seizure } from "@/lib/data/seizures";
 import { getDb } from "@/lib/db/client";
 import { formatDate, formatDuration, formatMonth, formatTime } from "@/lib/format";
@@ -70,6 +71,18 @@ function shade(count: number): string {
   return "bg-alert text-alert-foreground";
 }
 
+// A small pill with "Rx" written on it, so the marker isn't colour alone.
+function MedMarker() {
+  return (
+    <span
+      aria-hidden="true"
+      className="rounded-full border border-brand px-1 text-[10px] font-bold leading-4 text-brand"
+    >
+      Rx
+    </span>
+  );
+}
+
 function DayCell({ day, month, today, selected }: { day: Day; month: Month; today: string; selected: boolean }) {
   if (!day.inMonth) {
     return (
@@ -80,7 +93,7 @@ function DayCell({ day, month, today, selected }: { day: Day; month: Month; toda
   }
   const label = `${formatDate(day.key)}${day.key === today ? ", today" : ""}: ${
     day.count === 0 ? "no seizures" : plural(day.count, "seizure")
-  }`;
+  }${day.medChanges.length > 0 ? ", medication change" : ""}`;
   return (
     <Link
       href={`/calendar?month=${monthParam(month)}&day=${day.key}`}
@@ -101,17 +114,31 @@ function DayCell({ day, month, today, selected }: { day: Day; month: Month; toda
           {day.count}
         </span>
       )}
+      {day.medChanges.length > 0 && <MedMarker />}
     </Link>
   );
 }
 
-function DayList({ day, seizures }: { day: string; seizures: Seizure[] }) {
+function DayList({ day, seizures, medChanges }: { day: string; seizures: Seizure[]; medChanges: MedicationChange[] }) {
   const onDay = seizures.filter((seizure) => dayKey(seizure.startedAt) === day);
   return (
     <section aria-labelledby="day-heading" className="sw-card flex flex-col gap-3 p-5">
       <h2 id="day-heading" className="text-xl font-semibold">
         {formatDate(day)}
       </h2>
+      {medChanges.length > 0 && (
+        <ul className="flex flex-col gap-2">
+          {medChanges.map((change) => (
+            <li
+              key={`${change.drugName}-${change.kind}`}
+              className="flex items-center gap-2 rounded-xl border-2 border-brand px-4 py-2 text-base font-medium"
+            >
+              <MedMarker />
+              {change.description}
+            </li>
+          ))}
+        </ul>
+      )}
       {onDay.length === 0 ? (
         <p className="text-base text-muted">No seizures on this day.</p>
       ) : (
@@ -151,7 +178,9 @@ async function CalendarContent({ searchParams }: { searchParams: SearchParams })
     parseMonth(params.month) ?? (selectedDay ? parseMonth(selectedDay.slice(0, 7)) : null) ?? parseMonth(today.slice(0, 7))!;
   const { from, to } = monthBounds(shown.year, shown.month);
   const seizures = await listSeizuresBetween(getDb(), from, to);
-  const { weeks } = buildMonthGrid(shown.year, shown.month, seizures);
+  const next = shiftMonth(shown, 1);
+  const medChanges = await listMedicationChanges(getDb(), `${monthParam(shown)}-01`, `${monthParam(next)}-01`);
+  const { weeks } = buildMonthGrid(shown.year, shown.month, seizures, medChanges);
   const dayInMonth = selectedDay?.startsWith(monthParam(shown)) ? selectedDay : null;
 
   const arrowClass = "flex size-12 items-center justify-center rounded-xl border-2 border-border bg-surface text-2xl";
@@ -197,11 +226,19 @@ async function CalendarContent({ searchParams }: { searchParams: SearchParams })
               {count === 3 ? "3+" : count}
             </span>
           ))}
+          <span className="flex items-center gap-1.5">
+            <MedMarker />
+            Medication change
+          </span>
         </p>
       </section>
 
       {dayInMonth ? (
-        <DayList day={dayInMonth} seizures={seizures} />
+        <DayList
+          day={dayInMonth}
+          seizures={seizures}
+          medChanges={weeks.flat().find((day) => day.key === dayInMonth)?.medChanges ?? []}
+        />
       ) : (
         <p className="text-center text-base text-muted">Tap a day to see its seizures.</p>
       )}

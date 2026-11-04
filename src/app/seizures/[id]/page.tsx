@@ -1,10 +1,11 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
+import { listCurrentMedications } from "@/lib/data/medications";
 import { getSeizure } from "@/lib/data/seizures";
 import { getDb } from "@/lib/db/client";
 import { formatDate, formatDuration, formatTime } from "@/lib/format";
-import { householdDateTimeValue } from "@/lib/time";
+import { dayKey, householdDateTimeValue } from "@/lib/time";
 import { MAX_SEIZURE_SECONDS } from "@/lib/validation/seizure";
 import DeleteSeizure from "./DeleteSeizure";
 import Responses from "./Responses";
@@ -22,6 +23,10 @@ async function SeizureContent({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const seizure = await getSeizure(getDb(), id);
   if (!seizure) notFound();
+
+  const rescueMeds = (await listCurrentMedications(getDb(), dayKey(seizure.startedAt))).filter(
+    (med) => med.role === "rescue",
+  );
 
   // The recorded duration in whole seconds, split for the minutes and seconds fields.
   const recordedSeconds = seizure.endedAt
@@ -55,7 +60,16 @@ async function SeizureContent({ params }: { params: Promise<{ id: string }> }) {
         }}
       />
 
-      <Responses seizureId={seizure.id} seizureStartedAt={seizure.startedAt} responses={seizure.responses} />
+      <Responses
+        seizureId={seizure.id}
+        seizureStartedAt={seizure.startedAt}
+        responses={seizure.responses}
+        rescueMeds={rescueMeds.map((med) => ({
+          drugName: med.drugName,
+          doseAmount: med.doseAmount,
+          doseUnit: med.doseUnit,
+        }))}
+      />
 
       <DeleteSeizure id={seizure.id} />
     </>
