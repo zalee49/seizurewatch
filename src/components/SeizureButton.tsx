@@ -149,14 +149,14 @@ export default function SeizureButton({
 
   if (confirming) {
     return (
-      <section aria-label="Confirm new seizure" className="flex flex-col gap-4">
+      <section aria-label="Confirm new seizure" data-compact="true" className="flex flex-col gap-4">
         <p className="text-2xl font-semibold">End the current one and start a new one?</p>
         <button
           type="button"
           onClick={confirmNew}
-          className="min-h-24 w-full rounded-2xl bg-alert text-3xl font-bold text-alert-foreground"
+          className="min-h-24 w-full rounded-2xl bg-alert px-4 text-2xl font-bold text-alert-foreground"
         >
-          Yes
+          Start a new seizure
         </button>
         <button
           type="button"
@@ -173,24 +173,24 @@ export default function SeizureButton({
     saving === "start"
       ? "Saving…"
       : problem?.canRetry && problem.where === "start"
-        ? RETRY_MESSAGE
+        ? "Retry saving start"
         : "Seizure now";
   const stopLabel =
     saving === "stop"
       ? "Saving…"
       : problem?.canRetry && problem.where === "stop"
-        ? RETRY_MESSAGE
+        ? "Retry saving stop"
         : "Stopped";
 
   return (
-    <section aria-label="Log a seizure" className="flex flex-col gap-4">
+    <section aria-label="Log a seizure" data-compact={shown !== null} className="flex flex-col gap-4">
       {isActive && shown && (
-        <div className="rounded-2xl border-2 border-alert bg-surface p-4 text-center">
+        <div className="rounded-3xl border-2 border-alert bg-surface p-4 text-center">
           <p className="text-lg font-medium text-muted">Seizure in progress</p>
           <p className="text-7xl font-bold tabular-nums" aria-live="off">
             {seconds === null ? "--:--" : formatTimer(seconds - Math.floor(shown.startedAt.getTime() / 1000))}
           </p>
-          <p className="text-lg text-muted">
+          <p role="status" className="text-lg text-muted">
             {shown.saved ? "Saved" : "Started"} {formatTime(shown.startedAt)}
           </p>
         </div>
@@ -201,14 +201,14 @@ export default function SeizureButton({
           type="button"
           onClick={tapStopped}
           disabled={saving !== null}
-          className="min-h-40 w-full rounded-2xl bg-foreground text-4xl font-bold text-background disabled:opacity-60"
+          className="min-h-32 w-full rounded-2xl bg-foreground text-4xl font-bold text-background disabled:opacity-60"
         >
           {stopLabel}
         </button>
       )}
 
       {shown && shown.endedAt && (
-        <div className="rounded-2xl border-2 border-border bg-surface p-4 text-center">
+        <div className="sw-card p-6 text-center">
           <p className="text-lg font-medium text-muted">Last one lasted</p>
           <p className="text-4xl font-bold">
             {formatDuration((shown.endedAt.getTime() - shown.startedAt.getTime()) / 1000)}
@@ -222,11 +222,12 @@ export default function SeizureButton({
         </div>
       )}
 
+      {!isActive && <p className="text-center text-sm text-muted">Tap once to record the start. Add details later.</p>}
       <button
         type="button"
         onClick={tapSeizureNow}
         disabled={saving !== null}
-        className={`w-full rounded-2xl bg-alert font-bold text-alert-foreground disabled:opacity-60 ${
+        className={`sw-action w-full rounded-3xl bg-alert font-bold text-alert-foreground disabled:opacity-60 ${
           isActive ? "min-h-20 text-2xl" : "min-h-48 text-4xl"
         }`}
       >

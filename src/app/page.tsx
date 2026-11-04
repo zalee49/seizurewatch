@@ -7,7 +7,7 @@ import { formatDate, formatTime } from "@/lib/format";
 import { daysBetween, dayKey, todayKey } from "@/lib/time";
 
 function daysSinceText(days: number): string {
-  if (days <= 0) return "Today";
+  if (days <= 0) return "Last seizure was today";
   if (days === 1) return "1 day since last seizure";
   return `${days} days since last seizure`;
 }
@@ -19,24 +19,25 @@ async function HomeContent() {
 
   return (
     <>
-      <SeizureButton
-        active={active ? { id: active.id, startedAt: active.startedAt } : null}
-        last={last ? { id: last.id, startedAt: last.startedAt, endedAt: last.endedAt } : null}
-      />
-      <section aria-label="Since the last seizure" className="text-center">
+      <section aria-label="Since the last seizure" className="sw-card p-6">
         {last ? (
           <>
-            <p className="text-2xl font-semibold">
+            <p className="text-2xl font-semibold tracking-tight">
               {daysSinceText(daysBetween(dayKey(last.startedAt), todayKey()))}
             </p>
-            <p className="text-lg text-muted">
+            <p className="mt-2 text-base text-muted">
               Last seizure {formatDate(last.startedAt)}, {formatTime(last.startedAt)}
             </p>
           </>
         ) : (
-          <p className="text-2xl font-semibold">No seizures logged yet</p>
+          <p className="text-2xl font-semibold tracking-tight">No seizures logged yet</p>
         )}
       </section>
+      <SeizureButton
+        active={active ? { id: active.id, startedAt: active.startedAt } : null}
+        last={last ? { id: last.id, startedAt: last.startedAt, endedAt: last.endedAt } : null}
+      />
+
     </>
   );
 }
@@ -45,8 +46,8 @@ async function HomeContent() {
 export default function HomePage() {
   return (
     <main className="flex flex-col gap-6">
-      <h1 className="sr-only">Today</h1>
-      <Suspense fallback={<p className="text-center text-lg text-muted">Loading…</p>}>
+      <div><p className="mb-1 text-sm font-semibold uppercase tracking-[0.16em] text-muted">Your daily companion</p><h1 className="text-4xl font-semibold">Today</h1><p className="mt-2 text-muted">A little clarity, one day at a time.</p></div>
+      <Suspense fallback={<p className="text-center mt-2 text-base text-muted">Loading…</p>}>
         <HomeContent />
       </Suspense>
     </main>

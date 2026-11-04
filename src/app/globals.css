@@ -1,24 +1,24 @@
 @import "tailwindcss";
 
 :root {
-  --sw-background: #f6f7f9;
+  --sw-background: #f5f3ee;
   --sw-surface: #ffffff;
-  --sw-border: #d5d9e0;
-  --sw-foreground: #14181f;
-  --sw-muted: #4a5361;
-  --sw-brand: #2f5d8a;
-  --sw-alert: #c62828;
+  --sw-border: #dedfd7;
+  --sw-foreground: #243c36;
+  --sw-muted: #596b64;
+  --sw-brand: #286957;
+  --sw-alert: #b83e36;
   --sw-alert-foreground: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --sw-background: #101318;
-    --sw-surface: #1a1f27;
-    --sw-border: #333b47;
-    --sw-foreground: #f1f3f6;
-    --sw-muted: #aab3c0;
-    --sw-brand: #7fb0e0;
+    --sw-background: #121c19;
+    --sw-surface: #1b2924;
+    --sw-border: #36483f;
+    --sw-foreground: #edf2eb;
+    --sw-muted: #afbeb4;
+    --sw-brand: #95cfb7;
     --sw-alert: #ff6b66;
     --sw-alert-foreground: #1a0505;
   }
@@ -34,7 +34,7 @@
   --color-alert: var(--sw-alert);
   --color-alert-foreground: var(--sw-alert-foreground);
   --spacing-tap: 3rem;
-  --spacing-tabbar: 4rem;
+  --spacing-tabbar: 5rem;
 }
 
 html {
@@ -48,3 +48,17 @@ body {
   line-height: 1.5;
   overflow-x: hidden;
 }
+
+button, a { -webkit-tap-highlight-color: transparent; }
+button:not(:disabled), a { touch-action: manipulation; }
+button:not(:disabled) { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--sw-brand); outline-offset: 4px; }
+h1, h2 { letter-spacing: -0.035em; }
+.sw-card { border: 1px solid var(--sw-border); border-radius: 1.5rem; background: var(--sw-surface); box-shadow: 0 4px 20px #132e2410; }
+.sw-action { box-shadow: 0 8px 24px #8c302320; }
+.sw-action:active { transform: translateY(2px); }
+
+/* Keep live controls ahead of the historical summary on smaller phones. */
+main:has([data-compact="true"]) > section[aria-label="Since the last seizure"] { order: 2; }
+main:has([data-compact="true"]) > div:first-child p { display: none; }
+body:has([data-compact="true"]) header { margin-bottom: 1rem; }
