@@ -1,7 +1,8 @@
-export default function Home() {
+export default function HomePage() {
   return (
     <main>
-      <div>Hello world!</div>
+      <h1 className="text-2xl font-semibold">Today</h1>
+      <p className="mt-2 text-muted">Seizure logging is coming soon.</p>
     </main>
   );
 }

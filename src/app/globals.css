@@ -1,1 +1,50 @@
 @import "tailwindcss";
+
+:root {
+  --sw-background: #f6f7f9;
+  --sw-surface: #ffffff;
+  --sw-border: #d5d9e0;
+  --sw-foreground: #14181f;
+  --sw-muted: #4a5361;
+  --sw-brand: #2f5d8a;
+  --sw-alert: #c62828;
+  --sw-alert-foreground: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --sw-background: #101318;
+    --sw-surface: #1a1f27;
+    --sw-border: #333b47;
+    --sw-foreground: #f1f3f6;
+    --sw-muted: #aab3c0;
+    --sw-brand: #7fb0e0;
+    --sw-alert: #ff6b66;
+    --sw-alert-foreground: #1a0505;
+  }
+}
+
+@theme inline {
+  --color-background: var(--sw-background);
+  --color-surface: var(--sw-surface);
+  --color-border: var(--sw-border);
+  --color-foreground: var(--sw-foreground);
+  --color-muted: var(--sw-muted);
+  --color-brand: var(--sw-brand);
+  --color-alert: var(--sw-alert);
+  --color-alert-foreground: var(--sw-alert-foreground);
+  --spacing-tap: 3rem;
+  --spacing-tabbar: 4rem;
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.5;
+  overflow-x: hidden;
+}
