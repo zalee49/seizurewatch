@@ -24,6 +24,7 @@ export function ToggleGroup<T extends string>({
   onChange,
   columns,
   error,
+  idPrefix = "",
 }: {
   name: string;
   label: string;
@@ -32,8 +33,10 @@ export function ToggleGroup<T extends string>({
   onChange: (value: T | null) => void;
   columns: 2 | 3;
   error?: string;
+  // Keeps the error's id unique when several forms on a page use the same field name.
+  idPrefix?: string;
 }) {
-  const errorId = `${name}-error`;
+  const errorId = `${idPrefix}${name}-error`;
   return (
     <fieldset aria-describedby={error ? errorId : undefined}>
       <legend className={labelClass}>{label}</legend>

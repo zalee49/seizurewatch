@@ -1,6 +1,15 @@
 "use client";
 
-import { startTransition, useActionState, useState, type FormEvent, type ReactNode } from "react";
+import {
+  createContext,
+  startTransition,
+  useActionState,
+  useContext,
+  useId,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import type { SaveResult } from "@/lib/data/result";
 import type { MedicationPeriod } from "@/lib/data/medications";
 import { FieldError, inputClass, labelClass, SaveProblem, textAreaClass, ToggleGroup } from "@/app/seizures/[id]/fields";
@@ -35,6 +44,8 @@ function useMedForm(action: PeriodAction, onDone: () => void) {
     return result;
   }, null);
   const errors = state && !state.ok ? (state.fieldErrors ?? {}) : {};
+  // Prefixes this form's element ids, so two open forms never share one.
+  const idPrefix = useId();
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -42,7 +53,15 @@ function useMedForm(action: PeriodAction, onDone: () => void) {
     startTransition(() => formAction(formData));
   }
 
-  return { state, errors, pending, submit };
+  return { state, errors, pending, submit, idPrefix };
+}
+
+const IdPrefix = createContext("");
+
+// `id`, `name` and `aria-describedby` for an input, with ids unique to the enclosing form.
+function useFieldProps(name: string, errors: Record<string, string>) {
+  const prefix = useContext(IdPrefix);
+  return { id: `${prefix}${name}`, name, "aria-describedby": errors[name] ? `${prefix}${name}-error` : undefined };
 }
 
 function Field({
@@ -56,19 +75,16 @@ function Field({
   errors: Record<string, string>;
   children: ReactNode;
 }) {
+  const prefix = useContext(IdPrefix);
   return (
     <div>
-      <label htmlFor={name} className={labelClass}>
+      <label htmlFor={`${prefix}${name}`} className={labelClass}>
         {label}
       </label>
       {children}
-      <FieldError id={`${name}-error`} message={errors[name]} />
+      <FieldError id={`${prefix}${name}-error`} message={errors[name]} />
     </div>
   );
-}
-
-function describedBy(errors: Record<string, string>, name: string) {
-  return errors[name] ? `${name}-error` : undefined;
 }
 
 // Dose, unit and schedule, prefilled when changing or fixing a period.
@@ -78,38 +94,32 @@ function DoseFields({ errors, period }: { errors: Record<string, string>; period
       <div className="grid grid-cols-2 gap-3">
         <Field name="doseAmount" label="Dose" errors={errors}>
           <input
-            id="doseAmount"
-            name="doseAmount"
+            {...useFieldProps("doseAmount", errors)}
             type="text"
             inputMode="decimal"
             required
             defaultValue={period ? String(period.doseAmount) : ""}
-            aria-describedby={describedBy(errors, "doseAmount")}
             className={inputClass}
           />
         </Field>
         <Field name="doseUnit" label="Unit" errors={errors}>
           <input
-            id="doseUnit"
-            name="doseUnit"
+            {...useFieldProps("doseUnit", errors)}
             type="text"
             required
             placeholder="mg"
             defaultValue={period?.doseUnit ?? ""}
-            aria-describedby={describedBy(errors, "doseUnit")}
             className={inputClass}
           />
         </Field>
       </div>
       <Field name="schedule" label="How often" errors={errors}>
         <input
-          id="schedule"
-          name="schedule"
+          {...useFieldProps("schedule", errors)}
           type="text"
           required
           placeholder="Twice daily"
           defaultValue={period?.schedule ?? ""}
-          aria-describedby={describedBy(errors, "schedule")}
           className={inputClass}
         />
       </Field>
@@ -133,12 +143,10 @@ function DateField({
   return (
     <Field name={name} label={label} errors={errors}>
       <input
-        id={name}
-        name={name}
+        {...useFieldProps(name, errors)}
         type="date"
         required={required}
         defaultValue={defaultValue}
-        aria-describedby={describedBy(errors, name)}
         className={inputClass}
       />
     </Field>
@@ -149,11 +157,9 @@ function NoteField({ errors, defaultValue }: { errors: Record<string, string>; d
   return (
     <Field name="note" label="Note (optional)" errors={errors}>
       <textarea
-        id="note"
-        name="note"
+        {...useFieldProps("note", errors)}
         rows={2}
         defaultValue={defaultValue}
-        aria-describedby={describedBy(errors, "note")}
         className={textAreaClass}
       />
     </Field>
@@ -161,6 +167,7 @@ function NoteField({ errors, defaultValue }: { errors: Record<string, string>; d
 }
 
 function FormShell({
+  idPrefix,
   title,
   titleId,
   onSubmit,
@@ -170,6 +177,7 @@ function FormShell({
   onCancel,
   children,
 }: {
+  idPrefix: string;
   title: string;
   titleId: string;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -184,7 +192,7 @@ function FormShell({
       <h3 id={titleId} className="text-xl font-semibold">
         {title}
       </h3>
-      {children}
+      <IdPrefix value={idPrefix}>{children}</IdPrefix>
       {state && !state.ok && <SaveProblem message={state.message} conflict={state.error === "conflict"} />}
       <button type="submit" disabled={pending} className={primaryButton}>
         {pending ? "Saving…" : submitLabel}
@@ -209,9 +217,10 @@ function EditTarget({ period }: { period: PeriodView }) {
 }
 
 function ChangeDoseForm({ period, today, onDone }: { period: PeriodView; today: string; onDone: () => void }) {
-  const { state, errors, pending, submit } = useMedForm(changeMedicationAction, onDone);
+  const { state, errors, pending, submit, idPrefix } = useMedForm(changeMedicationAction, onDone);
   return (
     <FormShell
+      idPrefix={idPrefix}
       title={`Change ${period.drugName} dose`}
       titleId={`change-${period.id}`}
       onSubmit={submit}
@@ -229,9 +238,10 @@ function ChangeDoseForm({ period, today, onDone }: { period: PeriodView; today: 
 }
 
 function StopForm({ period, today, onDone }: { period: PeriodView; today: string; onDone: () => void }) {
-  const { state, errors, pending, submit } = useMedForm(stopMedicationAction, onDone);
+  const { state, errors, pending, submit, idPrefix } = useMedForm(stopMedicationAction, onDone);
   return (
     <FormShell
+      idPrefix={idPrefix}
       title={`Stop ${period.drugName}`}
       titleId={`stop-${period.id}`}
       onSubmit={submit}
@@ -312,11 +322,12 @@ function DeletePeriod({ id, onDeleted }: { id: string; onDeleted: () => void }) 
 }
 
 function FixForm({ period, onDone }: { period: PeriodView; onDone: () => void }) {
-  const { state, errors, pending, submit } = useMedForm(correctPeriodAction, onDone);
+  const { state, errors, pending, submit, idPrefix } = useMedForm(correctPeriodAction, onDone);
   const [role, setRole] = useState<MedicationRole | null>(period.role);
   return (
     <div className="flex flex-col gap-4">
       <FormShell
+        idPrefix={idPrefix}
         title={`Fix ${period.drugName}`}
         titleId={`fix-${period.id}`}
         onSubmit={submit}
@@ -328,16 +339,16 @@ function FixForm({ period, onDone }: { period: PeriodView; onDone: () => void })
         <EditTarget period={period} />
         <Field name="drugName" label="Medication" errors={errors}>
           <input
-            id="drugName"
+            id={`${idPrefix}drugName`}
             name="drugName"
+            aria-describedby={errors.drugName ? `${idPrefix}drugName-error` : undefined}
             type="text"
             required
             defaultValue={period.drugName}
-            aria-describedby={describedBy(errors, "drugName")}
             className={inputClass}
           />
         </Field>
-        <ToggleGroup name="role" label="Type" options={ROLE_OPTIONS} value={role} onChange={setRole} columns={2} error={errors.role} />
+        <ToggleGroup name="role" label="Type" options={ROLE_OPTIONS} value={role} onChange={setRole} columns={2} error={errors.role} idPrefix={idPrefix} />
         <DoseFields errors={errors} period={period} />
         <DateField name="startDate" label="Started" defaultValue={period.startDate} required errors={errors} />
         <DateField name="endDate" label="Ends (optional)" defaultValue={period.endDate ?? ""} required={false} errors={errors} />
@@ -401,10 +412,11 @@ export function HistoryFix({ period }: { period: PeriodView }) {
 }
 
 function AddForm({ today, onDone }: { today: string; onDone: () => void }) {
-  const { state, errors, pending, submit } = useMedForm(startMedicationAction, onDone);
+  const { state, errors, pending, submit, idPrefix } = useMedForm(startMedicationAction, onDone);
   const [role, setRole] = useState<MedicationRole | null>("maintenance");
   return (
     <FormShell
+      idPrefix={idPrefix}
       title="Add medication"
       titleId="add-medication"
       onSubmit={submit}
@@ -415,15 +427,15 @@ function AddForm({ today, onDone }: { today: string; onDone: () => void }) {
     >
       <Field name="drugName" label="Medication" errors={errors}>
         <input
-          id="drugName"
+          id={`${idPrefix}drugName`}
           name="drugName"
+          aria-describedby={errors.drugName ? `${idPrefix}drugName-error` : undefined}
           type="text"
           required
-          aria-describedby={describedBy(errors, "drugName")}
           className={inputClass}
         />
       </Field>
-      <ToggleGroup name="role" label="Type" options={ROLE_OPTIONS} value={role} onChange={setRole} columns={2} error={errors.role} />
+      <ToggleGroup name="role" label="Type" options={ROLE_OPTIONS} value={role} onChange={setRole} columns={2} error={errors.role} idPrefix={idPrefix} />
       <DoseFields errors={errors} />
       <DateField name="startDate" label="Started" defaultValue={today} required errors={errors} />
       <NoteField errors={errors} defaultValue="" />
