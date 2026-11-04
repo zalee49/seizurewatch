@@ -425,6 +425,21 @@ describe("reading rows", () => {
     expect((await listSeizuresBetween(db, new Date(0), new Date(Date.now() + HOUR)))[0].seizureType).toBeNull();
   });
 
+  it("maps an unknown stored response kind to other instead of throwing", async () => {
+    const db = await createTestDb();
+    const seizure = await start(db, new Date(Date.now() - HOUR));
+    const added = await addResponse(db, seizure.id, { kind: "rescue_med", medicationName: "Midazolam" });
+    if (!added.ok) throw new Error("add failed");
+    // The check constraint blocks bad values today; simulate an older schema without it.
+    await db.execute(`alter table seizure_responses drop constraint seizure_responses_kind_check`);
+    await db
+      .update(seizureResponses)
+      .set({ kind: "something_else" })
+      .where(eq(seizureResponses.id, added.value.id));
+    const read = await getSeizure(db, seizure.id);
+    expect(read?.responses[0].kind).toBe("other");
+  });
+
   it("returns null for an unknown or malformed id", async () => {
     const db = await createTestDb();
     expect(await getSeizure(db, newId())).toBeNull();
