@@ -11,8 +11,8 @@ when each seizure happened, medication given, symptoms and other relevant notes.
   and work one-handed; don't put required fields between the user and saving.
 - **Visually easy to interpret.** History should show trends (frequency, timing,
   medication changes) at a glance, not just a raw list.
-- **No login.** Both people see and edit the same shared data. Don't add accounts or auth
-  unless asked.
+- **No login or access gate.** Both people see and edit the same shared data. No
+  accounts, passcode or secret link (decided 2026-11-04); don't add any unless asked.
 - **Keep it simple.** This is a personal tool for one household; avoid infrastructure
   meant for scale.
 
@@ -20,8 +20,9 @@ when each seizure happened, medication given, symptoms and other relevant notes.
 
 - **Next.js 16 (App Router) + TypeScript + Tailwind CSS 4**, code under `src/`, npm.
 - **Hosting:** online, so both phones reach the same data (decided 2026-11-04). Target is
-  Vercel with a hosted Postgres; the database and any shared-passcode gate aren't wired
-  up yet.
+  Vercel with a hosted Postgres; the database isn't wired up yet.
+- **Product plan:** `Roadmap/GlobalRoadmap.md` holds the sections of the app and the
+  product decisions made so far.
 - **Commands:** `npm run dev` (local server at http://localhost:3000), `npm run build`,
   `npm run lint`. No test runner yet.
 
