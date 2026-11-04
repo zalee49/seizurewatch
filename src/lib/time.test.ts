@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { dayKey, daysBetween, monthBounds, parseHouseholdDateTime, todayKey } from "./time";
+import {
+  dayKey,
+  daysBetween,
+  householdDateTimeValue,
+  monthBounds,
+  parseHouseholdDateTime,
+  todayKey,
+} from "./time";
 
 describe("dayKey", () => {
   it("puts 23:30 and the next 00:30 New York time on different days", () => {
@@ -54,5 +61,16 @@ describe("parseHouseholdDateTime", () => {
     expect(parseHouseholdDateTime("")).toBeNull();
     expect(parseHouseholdDateTime("2026-13-01T10:00")).toBeNull();
     expect(parseHouseholdDateTime("2026-02-30T10:00")).toBeNull();
+  });
+});
+
+describe("householdDateTimeValue", () => {
+  it("writes household wall time that parses back to the same second", () => {
+    const instant = new Date("2026-11-01T05:30:07Z"); // 01:30:07 EDT, before the clocks go back
+    expect(householdDateTimeValue(instant)).toBe("2026-11-01T01:30:07");
+    expect(householdDateTimeValue(new Date("2026-12-10T19:30:00Z"))).toBe("2026-12-10T14:30:00");
+    expect(parseHouseholdDateTime(householdDateTimeValue(new Date("2026-06-10T18:30:45Z")))?.toISOString()).toBe(
+      "2026-06-10T18:30:45.000Z",
+    );
   });
 });

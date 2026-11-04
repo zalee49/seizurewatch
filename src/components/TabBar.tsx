@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 
 type Tab = {
   href: string;
@@ -72,9 +72,8 @@ const tabs: Tab[] = [
   },
 ];
 
-export default function TabBar() {
-  const pathname = usePathname();
-
+// `pathname` is null while it isn't known yet; no tab is highlighted then.
+function Bar({ pathname }: { pathname: string | null }) {
   return (
     <nav
       aria-label="Sections"
@@ -83,7 +82,7 @@ export default function TabBar() {
       <ul className="mx-auto flex max-w-2xl gap-1 px-2 py-2">
         {tabs.map((tab) => {
           const isActive =
-            tab.href === "/" ? pathname === "/" : pathname.startsWith(tab.href);
+            pathname !== null && (tab.href === "/" ? pathname === "/" : pathname.startsWith(tab.href));
           return (
             <li key={tab.href} className="flex-1">
               <Link
@@ -101,5 +100,19 @@ export default function TabBar() {
         })}
       </ul>
     </nav>
+  );
+}
+
+function CurrentBar() {
+  return <Bar pathname={usePathname()} />;
+}
+
+// On a route with a runtime param (`/seizures/[id]`) the pathname isn't known at prerender, so
+// `usePathname` suspends; the same bar without a highlight stands in until it resolves.
+export default function TabBar() {
+  return (
+    <Suspense fallback={<Bar pathname={null} />}>
+      <CurrentBar />
+    </Suspense>
   );
 }

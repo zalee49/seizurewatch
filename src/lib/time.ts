@@ -45,3 +45,9 @@ export function parseHouseholdDateTime(value: string): Date | null {
   }
   return new Date(parsed.getTime());
 }
+
+// The `datetime-local` value ("YYYY-MM-DDTHH:mm:ss") of an instant in household wall time; the inverse
+// of `parseHouseholdDateTime`. Slice to 16 characters for minutes only (an input without `step` refuses seconds).
+export function householdDateTimeValue(instant: Date): string {
+  return format(new TZDate(instant, HOUSEHOLD_TIME_ZONE), "yyyy-MM-dd'T'HH:mm:ss");
+}
