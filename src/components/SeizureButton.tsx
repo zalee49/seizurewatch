@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRef, useState, useSyncExternalStore } from "react";
 import { startSeizureAction, stopSeizureAction } from "@/app/seizures/actions";
 import { formatDuration, formatTime } from "@/lib/format";
+import { MAX_SEIZURE_SECONDS } from "@/lib/validation/seizure";
 
 type Shown = {
   id: string;
@@ -76,7 +77,15 @@ export default function SeizureButton({
     }
   }
 
-  const isActive = shown !== null && shown.endedAt === null;
+  // Unstopped for over 2 hours it is no longer active: the duration simply wasn't recorded
+  // (same rule as `getActiveSeizure`), instead of timing forever with a "Stopped" that
+  // would always be refused. `seconds` is null until hydration, so this settles client-side.
+  const expired =
+    shown !== null &&
+    shown.endedAt === null &&
+    seconds !== null &&
+    seconds - Math.floor(shown.startedAt.getTime() / 1000) > MAX_SEIZURE_SECONDS;
+  const isActive = shown !== null && shown.endedAt === null && !expired;
 
   async function run() {
     if (busy.current || !pending.current) return;
@@ -143,7 +152,13 @@ export default function SeizureButton({
   function confirmNew() {
     if (busy.current || !shown) return;
     setConfirming(false);
-    pending.current = { stop: { id: shown.id, endedAt: new Date() }, start: newStart() };
+    // Keep any times fixed by an earlier tap (a failed stop or start awaiting retry), so a
+    // cluster start never moves the stop time to when the retry was confirmed.
+    const prior = pending.current;
+    pending.current = {
+      stop: prior?.stop ?? { id: shown.id, endedAt: new Date() },
+      start: prior?.start ?? newStart(),
+    };
     void run();
   }
 
@@ -205,6 +220,19 @@ export default function SeizureButton({
         >
           {stopLabel}
         </button>
+      )}
+
+      {shown && !shown.endedAt && expired && (
+        <div className="sw-card p-6 text-center">
+          <p className="text-lg font-medium text-muted">Last one</p>
+          <p className="text-4xl font-bold">Duration not recorded</p>
+          <Link
+            href={`/seizures/${shown.id}`}
+            className="mt-3 flex min-h-tap items-center justify-center rounded-xl border-2 border-brand text-lg font-semibold text-brand"
+          >
+            Add details
+          </Link>
+        </div>
       )}
 
       {shown && shown.endedAt && (
