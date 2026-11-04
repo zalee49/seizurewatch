@@ -24,7 +24,10 @@ when each seizure happened, medication given, symptoms and other relevant notes.
 - **Product plan:** `Roadmap/GlobalRoadmap.md` holds the sections of the app and the
   product decisions made so far.
 - **Commands:** `npm run dev` (local server at http://localhost:3000), `npm run build`,
-  `npm run lint`. No test runner yet.
+  `npm run lint`, `npm run typecheck`, `npx vitest run <file>` (focused test; `npm run test`
+  runs all), `npm run db:generate` (new migration from `src/lib/db/schema.ts`, offline).
+  `npm run db:migrate` connects to `DATABASE_URL` (the dev database from `.env.local`);
+  run it against production only with the operator's yes.
 
 ## Planning and decisions
 

@@ -11,4 +11,8 @@ npm install
 npm run dev     # http://localhost:3000
 npm run build
 npm run lint
+npm run typecheck
+npm run test           # all tests; one file: npx vitest run <file>
+npm run db:generate    # create a migration from src/lib/db/schema.ts (offline)
+npm run db:migrate     # apply migrations to DATABASE_URL (.env.local, see .env.example)
 ```
