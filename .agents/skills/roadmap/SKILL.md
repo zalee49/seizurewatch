@@ -127,9 +127,9 @@ In this order:
 
 ## Phase review
 
-Per-task tests cannot see the seams between tasks, or drift between what **As built** says and what the code does. An independent review, by a model family that built none of the work where one is available, catches both. The roadmap decides only where reviews go; the operator picks the reviewer and tool (for example `/code-review`, or an independent reviewer agent given the phase's diff).
+Per-task tests cannot see the seams between tasks, or drift between what **As built** says and what the code does. An independent review, by a model family that built none of the work where one is available, catches both. Every review runs with the `phase-review` skill (`.agents/skills/phase-review/SKILL.md`), which owns the passes, severity, fix commits and grade. The roadmap decides only where reviews go.
 
-- **The operator dispatches every review; a builder never starts one.** A builder lands its task (tests, checkbox, **As built**, commit) and stops. It does not run a reviewer, a review skill or a review subagent on its own work, and does not fix findings nobody has raised. The `[boundary]` self-probe (Planning rule 5) is part of building, not a review, and still runs. When a review is the next open item, the builder's reply says so in one line and names the models that built the work under review.
+- **The operator dispatches every review; a builder never starts one.** A builder lands its task (tests, checkbox, **As built**, commit) and stops. It does not run `phase-review`, another reviewer or a review subagent on its own work, and does not fix findings nobody has raised. The `[boundary]` self-probe (Planning rule 5) is part of building, not a review, and still runs. When a review is the next open item, the builder's reply says so in one line and names the models that built the work under review.
 - **Landing review: only when absolutely necessary; the phase review is the default.** The phase review already covers every task for wiring and bugs, so a landing review is an extra pass over the same code. The author adds one only when a defect in the task would be expensive to undo by the time the phase review runs: a sibling in the same phase will write persisted state or records on top of the task's interface, and reverting that sibling would mean migrating or deleting what it wrote. Anything the phase review can still catch and the builder can still fix in place does not qualify, `[boundary]` tag or not. Where one is necessary, the dependent's line reads `Depends on: L1.4 after landing review (<why the phase review is too late>)`, and the reason is part of the line. No reason, no landing review.
 - **Phase review: once per phase that lands code, on the phase's own commits.** This is where review happens. The next phase does not open until its checkbox is ticked. A phase of decisions, watches or prose has no review block.
 - **One pass, unless it found a lot.** A second pass by another reviewer runs only when the first pass found a Critical or three or more Major findings.
@@ -139,7 +139,7 @@ Per-task tests cannot see the seams between tasks, or drift between what **As bu
 ```markdown
 ### Phase 2 review
 
-- [ ] Independent review by a reviewer the operator chooses, from a model family that built none of Phase 2 where one is available.
+- [ ] `phase-review` by a reviewer the operator chooses, from a model family that built none of Phase 2 where one is available.
 ```
 
 ---
@@ -228,7 +228,7 @@ Other documents cite these by number. Do not renumber them.
 
 ### Phase 1 review
 
-- [ ] Independent review by a reviewer the operator chooses, from a model family that built none of Phase 1 where one is available.
+- [ ] `phase-review` by a reviewer the operator chooses, from a model family that built none of Phase 1 where one is available.
 
 ---
 
