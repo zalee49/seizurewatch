@@ -38,7 +38,8 @@ const doseAmount = z
   .number({ error: "Enter the dose as a number" })
   .min(0.001, { error: "Dose must be more than zero" })
   .max(9_999_999, { error: "Dose is too large" })
-  .refine((value) => Math.abs(value * 1000 - Math.round(value * 1000)) < 0.001, {
+  // Exact: a typed value with at most 3 places is the same double as its thousandths divided by 1000.
+  .refine((value) => Math.round(value * 1000) / 1000 === value, {
     error: "Enter at most 3 decimal places",
   });
 

@@ -56,8 +56,21 @@ describe("startMedication", () => {
       error: "invalid",
       fieldErrors: { doseAmount: expect.any(String) },
     });
+    // Within a thousandth of a valid dose is still more than 3 places: refused, not rounded.
+    expect(await startMedication(db, { ...pheno, doseAmount: 10.1230005 })).toMatchObject({
+      ok: false,
+      error: "invalid",
+      fieldErrors: { doseAmount: expect.any(String) },
+    });
     expect(await startMedication(db, { ...pheno, startDate: "2026-02-30" })).toMatchObject({ ok: false, error: "invalid" });
     expect(await rows(db)).toEqual([]);
+  });
+
+  it("stores doses with up to 3 decimal places exactly", async () => {
+    const db = await createTestDb();
+    for (const [drugName, doseAmount] of [["A", 1.005], ["B", 0.001], ["C", 2.675], ["D", 9_999_999]] as const) {
+      expect(await startPheno(db, { drugName, doseAmount })).toMatchObject({ doseAmount });
+    }
   });
 
   it("refuses a period overlapping the same drug, ignoring case and spaces", async () => {
