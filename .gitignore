@@ -1,11 +1,42 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
 # OS / editor
 .DS_Store
 .vscode/
 .idea/
+*.pem
 
-# Secrets
-.env
-.env.*
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (secrets); the example file is committed
+.env*
 !.env.example
 
-# Stack-specific entries get added once the stack is chosen.
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
