@@ -140,21 +140,44 @@ Use `+` or `−` within a band when the findings sit near its edge. Say which ro
 
 ## 7. Reply
 
-Keep it to this shape. Plain language: say what went wrong in terms of what the operator would see, not in symbol names. A landing review uses the same shape with `<task ID> landing review` in place of the grade heading and no grade.
+Write for a narrow terminal and a non-technical reader. Short paragraphs, one
+idea each. Say what went wrong in terms of what the operator would see, not in
+symbol names. Never use a Markdown table for the findings: prose in table cells
+wraps into unreadable ragged rows. A landing review uses the same shape with
+`<task ID> landing review` in place of the grade heading and no grade.
+
+Keep it to this shape:
 
 ```markdown
-**<codename> Phase N review: <grade>** — reviewed by <model>.
-<Two or three sentences: why this grade, and which rubric row decided it.>
+## Verdict: <grade>
 
-**Built by:** <ID> <model>, <ID> <model>, …
+<One or two plain sentences: what the grade means, and which rubric row
+decided it.>
 
-| # | Severity | Task | What was wrong | Status |
-| :-- | :-- | :-- | :-- | :-- |
-| F1 | Major | L2.5 | <plain sentence> | Fixed (<short sha>) |
-| F2 | Minor | L2.3 | <plain sentence> | Open, needs you: <why> |
+**Anything need you?** <What the operator must decide or do, or "Nothing."
+Name any open *needs you* finding here, before the detail.>
 
-**Content:** <one line>. **Wiring:** <one line>. **Bugs:** <one line>.
-**Checked:** <test files run, lint and type-check result>. <Phase review box ticked | left open because F…>. <Second pass needed: this pass found a Critical or three Major.>
+## What I found
+
+**F1 — <short plain headline> (<task ID>, <severity>, fixed)**
+<One or two short sentences: what the operator would have seen, and what
+happens now. Name the fix commit if there is one.>
+
+**F2 — <short plain headline> (<task ID>, <severity>, open)**
+<One or two short sentences. If open, say why and what it would take.>
+
+## The rest, briefly
+
+- **Content:** <one line>.
+- **Wiring:** <one line>.
+- **Bugs:** <one line: the findings above, nothing else>.
+- **Checks:** <tests, lint and type-check, each as its own short item or one
+  short line each — results, not narrative>.
+- **Built by:** <ID> <model>, <ID> <model>, …
+- **Roadmap:** <review box ticked, or left open and why>.
+- <Second pass needed: this pass found a Critical or three Major — or omit
+  this line.>
 ```
 
-If there were no findings, say so plainly and give the grade. Don't pad the table.
+If there were no findings, say so plainly under the verdict and give the
+grade. Don't pad the findings section.
