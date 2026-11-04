@@ -19,8 +19,11 @@ when each seizure happened, medication given, symptoms and other relevant notes.
 ## Stack
 
 - **Next.js 16 (App Router) + TypeScript + Tailwind CSS 4**, code under `src/`, npm.
-- **Hosting:** online, so both phones reach the same data (decided 2026-11-04). Target is
-  Vercel with a hosted Postgres; the database isn't wired up yet.
+- **Hosting:** online, so both phones reach the same data (decided 2026-11-04). Production
+  is https://seizurewatch.vercel.app on Vercel, deployed on every push to `main` of
+  `zalee49/seizurewatch` (public repo), with Neon Postgres. `.env.local` points at the
+  Neon `dev` branch. Never run `vercel env pull`: the project's Development variables are
+  the production database, so it would point local work at live data.
 - **Product plan:** `Roadmap/GlobalRoadmap.md` holds the sections of the app and the
   product decisions made so far.
 - **Commands:** `npm run dev` (local server at http://localhost:3000), `npm run build`,
