@@ -50,6 +50,12 @@ describe("startMedication", () => {
     expect(missing).toMatchObject({ ok: false, error: "invalid" });
     expect(missing.ok ? null : Object.keys(missing.fieldErrors ?? {}).sort()).toEqual(["drugName", "schedule"]);
     expect(await startMedication(db, { ...pheno, doseAmount: 0 })).toMatchObject({ ok: false, error: "invalid" });
+    // More than 3 decimal places would be silently rounded by numeric(10,3); refuse it instead.
+    expect(await startMedication(db, { ...pheno, doseAmount: 10.1239 })).toMatchObject({
+      ok: false,
+      error: "invalid",
+      fieldErrors: { doseAmount: expect.any(String) },
+    });
     expect(await startMedication(db, { ...pheno, startDate: "2026-02-30" })).toMatchObject({ ok: false, error: "invalid" });
     expect(await rows(db)).toEqual([]);
   });
@@ -226,5 +232,20 @@ describe("listMedicationChanges", () => {
     ]);
     const march = await listMedicationChanges(db, "2026-03-01", "2026-04-01");
     expect(march.map((change) => change.date)).toEqual(["2026-03-01", "2026-03-15", "2026-03-15"]);
+  });
+
+  it("does not describe an unchanged dose and schedule as an arrow change", async () => {
+    const db = await createTestDb();
+    const first = await startPheno(db);
+    value(
+      await changeMedication(db, first.id, first.updatedAt, "2026-03-01", {
+        doseAmount: 60,
+        doseUnit: "mg",
+        schedule: "twice daily",
+        note: "note only",
+      }),
+    );
+    const changes = await listMedicationChanges(db, "2026-01-01", "2026-12-31");
+    expect(changes.find((change) => change.date === "2026-03-01")?.description).toBe("Phenobarbital 60 mg");
   });
 });

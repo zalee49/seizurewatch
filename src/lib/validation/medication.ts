@@ -32,11 +32,15 @@ const optionalNote = z
     return trimmed ? trimmed : null;
   });
 
-// numeric(10,3): three decimal places, under 10 million.
+// numeric(10,3): three decimal places, under 10 million. More places would be silently
+// rounded by the column, so refuse them instead of storing a dose different from the one typed.
 const doseAmount = z
   .number({ error: "Enter the dose as a number" })
   .min(0.001, { error: "Dose must be more than zero" })
-  .max(9_999_999, { error: "Dose is too large" });
+  .max(9_999_999, { error: "Dose is too large" })
+  .refine((value) => Math.abs(value * 1000 - Math.round(value * 1000)) < 0.001, {
+    error: "Enter at most 3 decimal places",
+  });
 
 export const doseSchema = z.object({
   doseAmount,

@@ -353,13 +353,16 @@ export async function listMedicationChanges(db: Db, fromDate: string, toDate: st
     const predecessor = sameDrug.find((other) => other.endDate === period.startDate);
     if (predecessor) {
       const sameDose = formatDose(predecessor) === formatDose(period);
+      const sameSchedule = predecessor.schedule === period.schedule;
       changes.push({
         date: period.startDate,
         drugName: period.drugName,
         kind: "changed",
-        description: sameDose
-          ? `${period.drugName} ${formatDose(period)}: ${predecessor.schedule} → ${period.schedule}`
-          : `${period.drugName} ${formatDose(predecessor)} → ${formatDose(period)}`,
+        description: !sameDose
+          ? `${period.drugName} ${formatDose(predecessor)} → ${formatDose(period)}`
+          : sameSchedule
+            ? `${period.drugName} ${formatDose(period)}`
+            : `${period.drugName} ${formatDose(period)}: ${predecessor.schedule} → ${period.schedule}`,
       });
     } else {
       changes.push({
