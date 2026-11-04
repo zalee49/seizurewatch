@@ -197,10 +197,13 @@ function FormShell({
 }
 
 function EditTarget({ period }: { period: PeriodView }) {
+  // Pinned when the form opens: a refresh bringing the other phone's edit must not adopt its
+  // version stamp, or this form's stale fields would save over that edit without a conflict.
+  const [version] = useState(period.updatedAt);
   return (
     <>
       <input type="hidden" name="id" value={period.id} />
-      <input type="hidden" name="expectedUpdatedAt" value={period.updatedAt} />
+      <input type="hidden" name="expectedUpdatedAt" value={version} />
     </>
   );
 }
