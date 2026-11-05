@@ -104,7 +104,6 @@ input::placeholder, textarea::placeholder { color: var(--sw-muted); opacity: 0.8
 .sw-skip-link:focus { transform: translateY(0); }
 
 @media (hover: hover) {
-  .sw-quick-links a:hover { border-color: var(--sw-brand); background: color-mix(in srgb, var(--sw-brand) 5%, var(--sw-surface)); }
   button:not(:disabled):hover { filter: brightness(0.97); }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -112,6 +111,5 @@ input::placeholder, textarea::placeholder { color: var(--sw-muted); opacity: 0.8
 }
 /* Keep live controls ahead of the historical summary on smaller phones. */
 main:has([data-compact="true"]) > section[aria-label="Since the last seizure"] { order: 2; }
-main:has([data-compact="true"]) .sw-page-description,
-main:has([data-compact="true"]) .sw-quick-links { display: none; }
+main:has([data-compact="true"]) .sw-page-description { display: none; }
 body:has([data-compact="true"]) header { margin-bottom: 1rem; }

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import Icon from "@/components/Icon";
 import PageHeading from "@/components/PageHeading";
 import { Suspense } from "react";
@@ -41,16 +40,6 @@ async function HomeContent() {
         active={active ? { id: active.id, startedAt: active.startedAt } : null}
         last={last ? { id: last.id, startedAt: last.startedAt, endedAt: last.endedAt } : null}
       />
-      <div className="sw-quick-links grid grid-cols-2 gap-3" aria-label="Quick links">
-        <Link href="/calendar" className="sw-card flex min-h-24 items-center gap-3 p-4 font-semibold">
-          <span className="rounded-xl bg-brand/10 p-2 text-brand"><Icon name="calendar" /></span>
-          Calendar
-        </Link>
-        <Link href="/meds" className="sw-card flex min-h-24 items-center gap-3 p-4 font-semibold">
-          <span className="rounded-xl bg-accent/10 p-2 text-accent"><Icon name="pill" /></span>
-          Meds
-        </Link>
-      </div>
     </>
   );
 }
