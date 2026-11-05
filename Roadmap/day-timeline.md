@@ -3,7 +3,7 @@
 Tapping a day on the calendar today shows a plain list of that day's seizures. This plan adds a 24-hour timeline at the top of that day view, with his daily medication doses, the rescue meds given and the seizures placed at their times of day. You can then see at a glance whether seizures fall before or after a dose.
 
 > **Date:** 2026-11-05.
-> **Status:** In progress (Phase 1 deployed, phone acceptance pending; Phase 2 built, review pending).
+> **Status:** In progress (Phase 1 deployed, phone acceptance pending; Phase 2 deployed, phone acceptance pending).
 > **Goal:** For any day on the calendar, one picture shows when each seizure started relative to his 6 AM and 6 PM doses and any rescue meds given that day.
 > **Runtime boundary:** Local development; production after the operator's deploy.
 > **Safety boundary:** Read-only feature: no schema change, no new writes. Nothing is drawn at a time the data doesn't support; a dose whose time can't be worked out is listed, not guessed.
@@ -178,8 +178,9 @@ Small to medium effort, from real use (2026-11-05): a day with 9 seizures piles 
 ### Phase 2 review
 
 - [x] `phase-review` by a reviewer the operator chooses, from a model family that built none of Phase 2 where one is available.
-  - 2026-11-05, GPT-6 Codex: B, F1–F2 fixed locally, nothing open; Phase 2 and review fixes remain uncommitted on `main` pending operator approval to commit.
-- [ ] Operator deploys Phase 2 (no migration).
+  - 2026-11-05, GPT-6 Codex: B, F1–F2 fixed locally, nothing open; Phase 2 and review fixes committed in 7a8bfc8.
+- [x] Operator deploys Phase 2 (no migration).
+  - Deployed 2026-11-05 by pushing `main` (7a8bfc8), on the operator's yes; Vercel built it from the push, and the live calendar serves the zoomable timeline. Phone acceptance is still pending.
 
 ---
 
