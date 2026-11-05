@@ -29,6 +29,13 @@
       "when": 1793883152340,
       "tag": "0003_drop_single_dose",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793901605625,
+      "tag": "0004_more_seizure_types",
+      "breakpoints": true
     }
   ]
 }

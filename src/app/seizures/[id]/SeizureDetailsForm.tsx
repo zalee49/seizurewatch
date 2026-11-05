@@ -29,6 +29,9 @@ const TYPE_OPTIONS = [
   { value: "generalized", label: "Generalized" },
   { value: "focal", label: "Focal" },
   { value: "focal_to_generalized", label: "Focal, then generalized" },
+  { value: "potato_bug", label: "Potato bug" },
+  { value: "demon", label: "Demon" },
+  { value: "walk_around_blind", label: "Walk around blind" },
   { value: "unsure", label: "Not sure" },
 ] as const;
 

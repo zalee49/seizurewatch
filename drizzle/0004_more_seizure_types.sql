@@ -1,0 +1,2 @@
+ALTER TABLE "seizures" DROP CONSTRAINT "seizures_seizure_type_check";--> statement-breakpoint
+ALTER TABLE "seizures" ADD CONSTRAINT "seizures_seizure_type_check" CHECK ("seizures"."seizure_type" in ('generalized', 'focal', 'focal_to_generalized', 'potato_bug', 'demon', 'walk_around_blind', 'unsure'));

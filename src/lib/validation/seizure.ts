@@ -1,6 +1,14 @@
 import { z } from "zod";
 
-export const SEIZURE_TYPES = ["generalized", "focal", "focal_to_generalized", "unsure"] as const;
+export const SEIZURE_TYPES = [
+  "generalized",
+  "focal",
+  "focal_to_generalized",
+  "potato_bug",
+  "demon",
+  "walk_around_blind",
+  "unsure",
+] as const;
 export const SEVERITIES = ["mild", "moderate", "severe"] as const;
 export const RESPONSE_KINDS = ["rescue_med", "other"] as const;
 

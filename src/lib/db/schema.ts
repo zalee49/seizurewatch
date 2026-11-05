@@ -69,7 +69,7 @@ export const seizures = pgTable(
     check("seizures_ended_after_started_check", sql`${table.endedAt} > ${table.startedAt}`),
     check(
       "seizures_seizure_type_check",
-      sql`${table.seizureType} in ('generalized', 'focal', 'focal_to_generalized', 'unsure')`,
+      sql`${table.seizureType} in ('generalized', 'focal', 'focal_to_generalized', 'potato_bug', 'demon', 'walk_around_blind', 'unsure')`,
     ),
     check(
       "seizures_severity_check",
