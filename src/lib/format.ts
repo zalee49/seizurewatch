@@ -55,5 +55,6 @@ export function formatMonth(year: number, month1to12: number): string {
 
 // "500 mg morning, 625 mg evening", or "60 mg twice daily" for one time.
 export function formatDoses(doses: { amount: number; when: string }[], unit: string): string {
+  if (doses.length === 0) return "Dose not recorded";
   return doses.map((dose) => `${dose.amount} ${unit} ${dose.when}`).join(", ");
 }

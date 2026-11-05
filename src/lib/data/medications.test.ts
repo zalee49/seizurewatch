@@ -20,6 +20,7 @@ import {
   type MedicationPeriod,
 } from "./medications";
 import type { DoseInput, StartMedicationInput } from "@/lib/validation/medication";
+import { formatDoses } from "@/lib/format";
 
 // One dose line: `amount` mg at `when`.
 function dose(amount: number, when = "twice daily", extra: Partial<DoseInput> = {}): DoseInput {
@@ -330,6 +331,34 @@ describe("listMedicationChanges", () => {
       "Keppra 625 mg morning, 875 mg evening → 1500 mg once daily",
       "Keppra 1500 mg once daily → 750 mg morning, 750 mg night",
     ]);
+  });
+});
+
+describe("reading stored periods", () => {
+  it("drops a stored dose line with no usable amount or time instead of showing it", async () => {
+    const db = await createTestDb();
+    const insertRaw = (drugName: string, doses: unknown, startDate: string) =>
+      db.insert(medicationPeriods).values({
+        drugName,
+        role: "maintenance",
+        doses: doses as MedicationPeriod["doses"],
+        doseUnit: "mg",
+        startDate,
+        endDate: null,
+        note: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    await insertRaw("Keppra", [{}, { amount: "abc", when: "morning" }, { amount: 500, when: "morning" }, { amount: 625 }], "2026-01-01");
+    await insertRaw("Phenobarbital", [{}], "2026-02-01");
+
+    const periods = await listMedicationHistory(db);
+    expect(periods.find((period) => period.drugName === "Keppra")?.doses).toEqual([{ amount: 500, when: "morning" }]);
+    expect(periods.find((period) => period.drugName === "Phenobarbital")?.doses).toEqual([]);
+    // A period with no readable dose still lists, without throwing or showing a made-up dose.
+    const changes = await listMedicationChanges(db, "2026-01-01", "2026-12-31");
+    expect(changes.find((change) => change.drugName === "Phenobarbital")?.description).toBe("Started Phenobarbital Dose not recorded");
+    expect(formatDoses([], "mg")).toBe("Dose not recorded");
   });
 });
 

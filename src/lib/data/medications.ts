@@ -79,7 +79,13 @@ function toPeriod(row: PeriodRow): MedicationPeriod {
     drugName: row.drugName,
     // Mapped by hand: a value from an older schema reads as maintenance, never an error.
     role: row.role === "rescue" ? "rescue" : "maintenance",
-    doses: row.doses.map((dose) => ({ amount: Number(dose.amount), when: String(dose.when) })),
+    // A stored line that doesn't hold together (no usable amount or time) is dropped, never
+    // shown as a dose; a period left with none reads as "Dose not recorded" (formatDoses).
+    doses: (Array.isArray(row.doses) ? row.doses : []).flatMap((dose) => {
+      const amount = Number(dose?.amount);
+      const when = typeof dose?.when === "string" ? dose.when.trim() : "";
+      return Number.isFinite(amount) && amount > 0 && when !== "" ? [{ amount, when }] : [];
+    }),
     doseUnit: row.doseUnit,
     startDate: row.startDate,
     endDate: row.endDate,
