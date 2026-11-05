@@ -363,9 +363,10 @@ function describeChange(before: MedicationPeriod, after: MedicationPeriod): stri
       .join(", ");
   }
   if (before.doses.length === 1 && after.doses.length === 1) {
+    if (before.doses[0].when === after.doses[0].when) return `${formatDose(before)} → ${formatDose(after)}`;
     return formatDose(before) === formatDose(after)
       ? `${formatDose(after)}: ${before.doses[0].when} → ${after.doses[0].when}`
-      : `${formatDose(before)} → ${formatDose(after)}`;
+      : `${formatDoses(before.doses, before.doseUnit)} → ${formatDoses(after.doses, unit)}`;
   }
   return `${formatDoses(before.doses, before.doseUnit)} → ${formatDoses(after.doses, unit)}`;
 }

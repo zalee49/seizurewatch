@@ -288,6 +288,16 @@ describe("listMedicationChanges", () => {
     expect(march.map((change) => change.date)).toEqual(["2026-03-01", "2026-03-15", "2026-03-15"]);
   });
 
+  it("shows both the dose and the time when a single-time change moves both", async () => {
+    const db = await createTestDb();
+    const first = await startPheno(db);
+    value(await changeMedication(db, first.id, first.updatedAt, "2026-03-01", dose(75, "three times daily")));
+    const changes = await listMedicationChanges(db, "2026-01-01", "2026-12-31");
+    expect(changes.find((change) => change.date === "2026-03-01")?.description).toBe(
+      "Phenobarbital 60 mg twice daily → 75 mg three times daily",
+    );
+  });
+
   it("does not describe an unchanged dose and schedule as an arrow change", async () => {
     const db = await createTestDb();
     const first = await startPheno(db);
