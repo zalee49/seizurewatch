@@ -120,7 +120,7 @@ Medium effort: one pure layout function and one list component, plus rewiring th
 
 - [x] `phase-review` by a reviewer the operator chooses, from a model family that built none of Phase 1 where one is available.
   - 2026-11-05, Codex (GPT-6), B: F1 Major and F2 Minor fixed locally; nothing open; fixes and review uncommitted on main pending operator approval to commit.
-- [ ] Operator deploys Phase 1 (no migration).
+- [x] Operator deploys Phase 1 (no migration). Deployed 2026-11-05 with Phase 2, commit ecb766d.
 
 ---
 
@@ -186,7 +186,7 @@ Medium effort: pointer handling and window snapping in one component and its pur
 
 - [x] `phase-review` by a reviewer the operator chooses, from a model family that built none of Phase 2 where one is available.
   - 2026-11-05, Codex (GPT-6), B: F1 Major fixed locally; nothing open; fix and review uncommitted on main pending operator approval to commit.
-- [ ] Operator deploys Phase 2 (no migration).
+- [x] Operator deploys Phase 2 (no migration). Deployed 2026-11-05, commit ecb766d.
 
 ---
 
