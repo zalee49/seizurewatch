@@ -128,7 +128,8 @@ async function inTransaction<T>(db: Db, work: (tx: Db) => Promise<SaveResult<T>>
 }
 
 // The draw and its results in one transaction: a failed result row leaves no draw behind.
-export async function createDraw(db: Db, input: BloodDrawInput): Promise<SaveResult<BloodDraw>> {
+export async function createDraw(db: Db, input: BloodDrawInput & { id: string }): Promise<SaveResult<BloodDraw>> {
+  if (!idSchema.safeParse(input.id).success) return refuse("invalid", "Reload the form and try again.");
   const parsed = parseDraw(input);
   if (!parsed.ok) return parsed.result;
   const { draw } = parsed;
@@ -137,8 +138,14 @@ export async function createDraw(db: Db, input: BloodDrawInput): Promise<SaveRes
     const now = new Date();
     const [row] = await tx
       .insert(bloodDraws)
-      .values({ drawnAt: draw.drawnAt, lab: draw.lab, notes: draw.notes, createdAt: now, updatedAt: now })
+      .values({ id: input.id, drawnAt: draw.drawnAt, lab: draw.lab, notes: draw.notes, createdAt: now, updatedAt: now })
+      .onConflictDoNothing({ target: bloodDraws.id })
       .returning();
+    // A retry carries the same id. Keep the stored draw and its results, even if it was edited since.
+    if (!row) {
+      const stored = await getDraw(tx, input.id);
+      return stored ? { ok: true, value: stored } : notFound();
+    }
     await tx.insert(bloodResults).values(resultValues(row.id, draw));
     return { ok: true, value: (await withResults(tx, [row]))[0] };
   });
@@ -163,7 +170,10 @@ export async function updateDraw(
     // until commit, so a second save waits and then sees the new version.
     const [row] = await tx
       .update(bloodDraws)
-      .set({ drawnAt: draw.drawnAt, lab: draw.lab, notes: draw.notes, updatedAt: new Date() })
+      .set({
+        drawnAt: draw.drawnAt, lab: draw.lab, notes: draw.notes,
+        updatedAt: new Date(Math.max(Date.now(), expectedUpdatedAt.getTime() + 1)),
+      })
       .where(and(eq(bloodDraws.id, id), eq(bloodDraws.updatedAt, expectedUpdatedAt)))
       .returning();
     if (!row) {

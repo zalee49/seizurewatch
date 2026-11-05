@@ -10,8 +10,8 @@ import { idSchema } from "@/lib/validation/seizure";
 
 // Form fields: `drawnAt` (datetime-local, household time), `lab`, `notes`, and per result row
 // `testName`, `value`, `unit`, `rangeLow`, `rangeHigh`, repeated in row order. Every row must
-// render all five inputs so the repeated values line up by index. Edit forms add hidden `id` and
-// `expectedUpdatedAt` (ISO).
+// render all five inputs so the repeated values line up by index. Creates carry a stable client `id`
+// across retries. Edit forms add hidden `id` and `expectedUpdatedAt` (ISO).
 
 type DrawResult = SaveResult<BloodDraw>;
 
@@ -61,7 +61,9 @@ function drawInput(formData: FormData): BloodDrawInput {
 }
 
 export async function createDrawAction(_prev: DrawResult | null, formData: FormData): Promise<DrawResult> {
-  return done(await createDraw(getDb(), drawInput(formData)));
+  const id = formData.get("id");
+  if (typeof id !== "string" || !idSchema.safeParse(id).success) return outOfDate();
+  return done(await createDraw(getDb(), { ...drawInput(formData), id }));
 }
 
 export async function updateDrawAction(_prev: DrawResult | null, formData: FormData): Promise<DrawResult> {

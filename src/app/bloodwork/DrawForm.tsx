@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { startTransition, useActionState, useId, useState, type FormEvent } from "react";
+import { startTransition, useActionState, useId, useRef, useState, type FormEvent } from "react";
 import type { SaveResult } from "@/lib/data/result";
 import type { BloodDraw } from "@/lib/data/bloodwork";
 import { FieldError, inputClass, labelClass, SaveProblem, textAreaClass } from "@/app/seizures/[id]/fields";
@@ -64,6 +64,8 @@ export default function DrawForm({
   // Pinned when the form opens: a refresh bringing the other phone's edit must not adopt its
   // version stamp, or this form's stale fields would save over that edit without a conflict.
   const [version] = useState(draw?.updatedAt);
+  // A retried create uses the same draw id; the server never inserts its results twice.
+  const createId = useRef<string | null>(null);
 
   const [state, formAction, pending] = useActionState(
     async (prev: SaveResult<BloodDraw> | null, formData: FormData) => {
@@ -78,6 +80,10 @@ export default function DrawForm({
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
+    if (!draw) {
+      createId.current ??= crypto.randomUUID();
+      formData.set("id", createId.current);
+    }
     setSubmittedKeys(rows.map((row) => row.key));
     startTransition(() => formAction(formData));
   }

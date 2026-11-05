@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Db } from "@/lib/db/client";
 import { bloodDraws, bloodResults } from "@/lib/db/schema";
 import { createTestDb } from "@/test/db";
@@ -9,8 +9,8 @@ import { createDraw, deleteDraw, getDraw, listDraws, listTrendSeries, updateDraw
 const pheno = { testName: "Phenobarbital", value: 28.5, unit: "µg/mL", rangeLow: 15, rangeHigh: 45 };
 const alt = { testName: "ALT", value: 120, unit: "U/L", rangeLow: 10, rangeHigh: 100 };
 
-function draw(drawnAt: string, results: BloodDrawInput["results"], extra: Partial<BloodDrawInput> = {}): BloodDrawInput {
-  return { drawnAt: new Date(drawnAt), results, ...extra };
+function draw(drawnAt: string, results: BloodDrawInput["results"], extra: Partial<BloodDrawInput> = {}): BloodDrawInput & { id: string } {
+  return { id: crypto.randomUUID(), drawnAt: new Date(drawnAt), results, ...extra };
 }
 
 function value<T>(result: { ok: true; value: T } | { ok: false; message: string }): T {
@@ -34,6 +34,27 @@ async function failResultInserts(db: Db) {
 }
 
 describe("createDraw", () => {
+  it("saves a retried submission only once, including its results", async () => {
+    const db = await createTestDb();
+    const input = { ...draw("2026-10-01T13:00:00Z", [pheno]), id: crypto.randomUUID() };
+    const first = value(await createDraw(db, input));
+    const retry = value(await createDraw(db, input));
+    expect(retry).toEqual(first);
+    expect(await counts(db)).toEqual({ draws: 1, results: 1 });
+    expect(await listTrendSeries(db)).toEqual([]);
+    const edited = value(await updateDraw(db, first.id, first.updatedAt, draw("2026-10-01T13:00:00Z", [alt])));
+    expect(value(await createDraw(db, input))).toEqual(edited);
+    expect(await counts(db)).toEqual({ draws: 1, results: 1 });
+  });
+
+  it("refuses an invalid submission id without writing anything", async () => {
+    const db = await createTestDb();
+    expect(await createDraw(db, { ...draw("2026-10-01T13:00:00Z", [pheno]), id: "bad-id" })).toMatchObject({
+      ok: false, error: "invalid",
+    });
+    expect(await counts(db)).toEqual({ draws: 0, results: 0 });
+  });
+
   it("saves a draw with its results in order, numbers as numbers", async () => {
     const db = await createTestDb();
     const saved = value(
@@ -88,7 +109,7 @@ describe("createDraw", () => {
       ok: false,
       fieldErrors: { results: "Add at least one result" },
     });
-    expect(await createDraw(db, { drawnAt: new Date(NaN), results: [pheno] })).toMatchObject({
+    expect(await createDraw(db, { id: crypto.randomUUID(), drawnAt: new Date(NaN), results: [pheno] })).toMatchObject({
       ok: false,
       fieldErrors: { drawnAt: expect.any(String) },
     });
@@ -111,6 +132,23 @@ describe("updateDraw", () => {
   async function saved(db: Db): Promise<BloodDraw> {
     return value(await createDraw(db, draw("2026-10-01T13:00:00Z", [pheno, alt])));
   }
+
+  it("advances the version even when the clock has not moved", async () => {
+    const db = await createTestDb();
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-04T12:00:00Z"));
+    try {
+      const original = await saved(db);
+      const updated = value(await updateDraw(db, original.id, original.updatedAt, draw("2026-10-01T13:00:00Z", [alt])));
+      expect(updated.updatedAt.getTime()).toBeGreaterThan(original.updatedAt.getTime());
+      expect(await updateDraw(db, original.id, original.updatedAt, draw("2026-10-01T13:00:00Z", [pheno]))).toMatchObject({
+        ok: false, error: "conflict",
+      });
+      expect(await getDraw(db, original.id)).toEqual(updated);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 
   it("replaces the result rows and moves the version", async () => {
     const db = await createTestDb();

@@ -84,7 +84,8 @@ export async function saveProfile(
     ...details,
     weightAmount: details.weightAmount === null ? null : String(details.weightAmount),
   };
-  const now = new Date();
+  // The version must change even in the same millisecond or when a server's clock is behind.
+  const now = new Date(Math.max(Date.now(), expectedUpdatedAt === null ? 0 : expectedUpdatedAt.getTime() + 1));
 
   // Never `on conflict do update`: that would overwrite the other person's first save.
   const [row] =

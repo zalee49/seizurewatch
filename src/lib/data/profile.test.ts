@@ -1,9 +1,26 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { profile } from "@/lib/db/schema";
 import { createTestDb } from "@/test/db";
 import { getProfile, saveProfile } from "./profile";
 
 describe("saveProfile", () => {
+  it("advances the version even when the clock has not moved", async () => {
+    const db = await createTestDb();
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-04T12:00:00Z"));
+    try {
+      const first = await saveProfile(db, null, { name: "First" });
+      if (!first.ok) throw new Error(first.message);
+      const second = await saveProfile(db, first.value.updatedAt, { name: "Second" });
+      if (!second.ok) throw new Error(second.message);
+      expect(second.value.updatedAt.getTime()).toBeGreaterThan(first.value.updatedAt.getTime());
+      expect(await saveProfile(db, first.value.updatedAt, { name: "Stale" })).toMatchObject({ ok: false, error: "conflict" });
+      expect(await getProfile(db)).toEqual(second.value);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("has no profile until the first save", async () => {
     const db = await createTestDb();
     expect(await getProfile(db)).toBeNull();
