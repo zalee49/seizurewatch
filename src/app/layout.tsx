@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
+import Link from "next/link";
 import "./globals.css";
 import RefreshOnFocus from "@/components/RefreshOnFocus";
+import Icon from "@/components/Icon";
 import TabBar from "@/components/TabBar";
 
 export const metadata: Metadata = {
@@ -16,8 +18,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f5f3ee" },
-    { media: "(prefers-color-scheme: dark)", color: "#121c19" },
+    { media: "(prefers-color-scheme: light)", color: "#f5f7ff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0c1226" },
   ],
 };
 
@@ -26,13 +28,17 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en">
       <body>
         <div className="mx-auto min-h-dvh max-w-2xl px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[calc(var(--spacing-tabbar)+env(safe-area-inset-bottom)+1.5rem)]">
-          <header className="mb-8 flex items-center gap-3 text-brand">
-            <span aria-hidden="true" className="flex size-10 items-center justify-center rounded-2xl bg-brand/10">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4" /></svg>
-            </span>
-            <span className="text-lg font-semibold tracking-tight">SeizureWatch</span>
+          <a href="#main-content" className="sw-skip-link">Skip to content</a>
+          <header className="mb-8 flex items-center justify-between gap-3">
+            <Link href="/" className="flex min-h-tap items-center gap-3 rounded-2xl" aria-label="SeizureWatch home">
+              <span className="sw-logo flex size-11 items-center justify-center rounded-2xl text-white">
+                <Icon name="activity" />
+              </span>
+              <span className="text-lg font-bold tracking-tight">Seizure<span className="text-brand">Watch</span></span>
+            </Link>
+            <span className="hidden rounded-full bg-brand/10 px-3 py-1.5 min-[360px]:inline-flex text-xs font-semibold text-brand">Care, together</span>
           </header>
-          {children}
+          <div id="main-content" tabIndex={-1}>{children}</div>
         </div>
         <TabBar />
         <RefreshOnFocus />

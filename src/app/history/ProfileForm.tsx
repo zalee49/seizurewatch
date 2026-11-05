@@ -23,7 +23,7 @@ const UNIT_OPTIONS = [
   { value: "kg", label: "kg" },
 ] as const;
 
-const primaryButton = "min-h-14 w-full rounded-xl bg-brand text-lg font-bold text-background disabled:opacity-60";
+const primaryButton = "min-h-14 w-full rounded-xl bg-brand text-lg font-bold text-brand-foreground disabled:opacity-60";
 const secondaryButton = "min-h-tap w-full rounded-xl border-2 border-border px-4 text-base font-semibold";
 
 function Field({

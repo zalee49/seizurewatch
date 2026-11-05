@@ -1,26 +1,36 @@
 @import "tailwindcss";
 
 :root {
-  --sw-background: #f5f3ee;
+  color-scheme: light;
+  --sw-background: #f5f7ff;
   --sw-surface: #ffffff;
-  --sw-border: #dedfd7;
-  --sw-foreground: #243c36;
-  --sw-muted: #596b64;
-  --sw-brand: #286957;
-  --sw-alert: #b83e36;
+  --sw-border: #dce3f3;
+  --sw-foreground: #18233e;
+  --sw-muted: #56627c;
+  --sw-brand: #255be3;
+  --sw-brand-foreground: #ffffff;
+  --sw-accent: #7c3aed;
+  --sw-alert: #d9364f;
   --sw-alert-foreground: #ffffff;
+  --sw-glow: #e6ecff;
+  --sw-shadow: #243f8c0b;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --sw-background: #121c19;
-    --sw-surface: #1b2924;
-    --sw-border: #36483f;
-    --sw-foreground: #edf2eb;
-    --sw-muted: #afbeb4;
-    --sw-brand: #95cfb7;
-    --sw-alert: #ff6b66;
-    --sw-alert-foreground: #1a0505;
+    color-scheme: dark;
+    --sw-background: #0c1226;
+    --sw-surface: #161f39;
+    --sw-border: #303e60;
+    --sw-foreground: #f0f4ff;
+    --sw-muted: #b1bed9;
+    --sw-brand: #91b5ff;
+    --sw-brand-foreground: #0c1b3b;
+    --sw-accent: #c4a5ff;
+    --sw-alert: #ff8094;
+    --sw-alert-foreground: #380b16;
+    --sw-glow: #1c2b58;
+    --sw-shadow: #00000026;
   }
 }
 
@@ -31,34 +41,77 @@
   --color-foreground: var(--sw-foreground);
   --color-muted: var(--sw-muted);
   --color-brand: var(--sw-brand);
+  --color-brand-foreground: var(--sw-brand-foreground);
+  --color-accent: var(--sw-accent);
   --color-alert: var(--sw-alert);
   --color-alert-foreground: var(--sw-alert-foreground);
   --spacing-tap: 3rem;
   --spacing-tabbar: 5rem;
 }
 
-html {
-  font-size: 16px;
-}
-
+html { font-size: 16px; scroll-padding-bottom: 7rem; }
 body {
-  background: var(--color-background);
-  color: var(--color-foreground);
+  background: radial-gradient(ellipse at 100% 0%, var(--sw-glow), transparent 55%), var(--sw-background);
+  color: var(--sw-foreground);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   line-height: 1.5;
-  overflow-x: hidden;
+  min-height: 100dvh;
 }
-
 button, a { -webkit-tap-highlight-color: transparent; }
 button:not(:disabled), a { touch-action: manipulation; }
-button:not(:disabled) { cursor: pointer; }
+button:not(:disabled), summary { cursor: pointer; }
+button, a, input, textarea, select { transition: background-color 160ms, border-color 160ms, box-shadow 160ms, color 160ms; }
+button:disabled { cursor: wait; }
 :focus-visible { outline: 3px solid var(--sw-brand); outline-offset: 4px; }
-h1, h2 { letter-spacing: -0.035em; }
-.sw-card { border: 1px solid var(--sw-border); border-radius: 1.5rem; background: var(--sw-surface); box-shadow: 0 4px 20px #132e2410; }
-.sw-action { box-shadow: 0 8px 24px #8c302320; }
+h1, h2 { letter-spacing: -0.04em; }
+main { min-width: 0; }
+.sw-logo { background: linear-gradient(135deg, #2563eb, #7c3aed); box-shadow: 0 5px 15px #255be32b; }
+.sw-page-heading { display: flex; align-items: flex-start; gap: 1rem; }
+.sw-heading-icon { display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 3.5rem; height: 3.5rem; border-radius: 1.15rem; background: var(--sw-brand); color: var(--sw-brand-foreground); box-shadow: 0 6px 18px var(--sw-shadow); }
+.sw-card { border: 1px solid var(--sw-border); border-radius: 1.5rem; background: var(--sw-surface); box-shadow: 0 6px 24px var(--sw-shadow); }
+.sw-summary { background: linear-gradient(120deg, color-mix(in srgb, var(--sw-brand) 9%, var(--sw-surface)), var(--sw-surface)); border-color: color-mix(in srgb, var(--sw-brand) 28%, var(--sw-border)); }
+.sw-action { background-image: linear-gradient(120deg, #ffffff08, #ffffff00); box-shadow: 0 8px 24px #d9364f29; }
 .sw-action:active { transform: translateY(2px); }
+.sw-live { background: color-mix(in srgb, var(--sw-alert) 6%, var(--sw-surface)); }
+.sw-tabbar { border-top: 1px solid var(--sw-border); background: color-mix(in srgb, var(--sw-surface) 95%, transparent); backdrop-filter: blur(20px); box-shadow: 0 -4px 24px var(--sw-shadow); }
+/* Each section has its own ink; selected tiles repeat it in a soft two-tone finish. */
+.sw-tab-item[data-icon="today"] { --sw-nav-ink: #255be3; }
+.sw-tab-item[data-icon="calendar"] { --sw-nav-ink: #087d98; }
+.sw-tab-item[data-icon="meds"] { --sw-nav-ink: #7c3aed; }
+.sw-tab-item[data-icon="bloodwork"] { --sw-nav-ink: #ce305a; }
+.sw-tab-item[data-icon="history"] { --sw-nav-ink: #a65d15; }
+.sw-tab-icon { display: flex; align-items: center; justify-content: center; width: 2.75rem; height: 2.5rem; border: 1px solid transparent; border-radius: 0.9rem; color: var(--sw-nav-ink); }
+.sw-tab-active { color: var(--sw-nav-ink); background: color-mix(in srgb, var(--sw-nav-ink) 7%, transparent); }
+.sw-tab-active .sw-tab-icon { background: linear-gradient(145deg, color-mix(in srgb, var(--sw-nav-ink) 10%, var(--sw-surface)), color-mix(in srgb, var(--sw-nav-ink) 20%, var(--sw-surface))); border-color: color-mix(in srgb, var(--sw-nav-ink) 22%, transparent); box-shadow: 0 2px 5px var(--sw-shadow), inset 0 1px 0 color-mix(in srgb, var(--sw-surface) 65%, transparent); }
+/* Give touch-device forms the full screen while a keyboard or native picker is in use.
+   Keep the page's bottom padding so hiding the bar doesn't shift the focused field. */
+@media (hover: none) and (pointer: coarse) {
+  body:has(input:not([type="hidden"]):focus, textarea:focus, select:focus) .sw-tabbar {
+    display: none;
+  }
+}
+@media (prefers-color-scheme: dark) {
+  .sw-tab-item[data-icon="today"] { --sw-nav-ink: #91b5ff; }
+  .sw-tab-item[data-icon="calendar"] { --sw-nav-ink: #66d4e8; }
+  .sw-tab-item[data-icon="meds"] { --sw-nav-ink: #c4a5ff; }
+  .sw-tab-item[data-icon="bloodwork"] { --sw-nav-ink: #ff91af; }
+  .sw-tab-item[data-icon="history"] { --sw-nav-ink: #f0bb79; }
+}
+input:not([type="hidden"]), textarea, select { scroll-margin-block: 6rem; }
+input:not([type="hidden"]):focus, textarea:focus, select:focus { border-color: var(--sw-brand); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sw-brand) 14%, transparent); }
+input::placeholder, textarea::placeholder { color: var(--sw-muted); opacity: 0.8; }
+.sw-skip-link { position: fixed; top: 0.5rem; left: 1rem; z-index: 50; transform: translateY(-200%); border-radius: 0.75rem; padding: 0.75rem 1rem; background: var(--sw-brand); color: var(--sw-brand-foreground); font-weight: 600; }
+.sw-skip-link:focus { transform: translateY(0); }
 
+@media (hover: hover) {
+  .sw-quick-links a:hover { border-color: var(--sw-brand); background: color-mix(in srgb, var(--sw-brand) 5%, var(--sw-surface)); }
+  button:not(:disabled):hover { filter: brightness(0.97); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; }
+}
 /* Keep live controls ahead of the historical summary on smaller phones. */
 main:has([data-compact="true"]) > section[aria-label="Since the last seizure"] { order: 2; }
-main:has([data-compact="true"]) > div:first-child p { display: none; }
+main:has([data-compact="true"]) .sw-page-description,
+main:has([data-compact="true"]) .sw-quick-links { display: none; }
 body:has([data-compact="true"]) header { margin-bottom: 1rem; }

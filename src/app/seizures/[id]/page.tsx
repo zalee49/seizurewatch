@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
+import PageHeading from "@/components/PageHeading";
 import { listCurrentMedications } from "@/lib/data/medications";
 import { getSeizure } from "@/lib/data/seizures";
 import { getDb } from "@/lib/db/client";
@@ -83,7 +84,7 @@ async function SeizureContent({ params }: { params: Promise<{ id: string }> }) {
 export default function SeizurePage({ params }: PageProps<"/seizures/[id]">) {
   return (
     <main className="flex flex-col gap-6">
-      <h1 className="text-4xl font-semibold">Seizure</h1>
+      <PageHeading title="Seizure" description="The details that help you see the full picture." icon="activity" />
       <Suspense fallback={<p className="mt-2 text-center text-base text-muted">Loading…</p>}>
         <SeizureContent params={params} />
       </Suspense>

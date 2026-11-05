@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { connection } from "next/server";
+import Icon from "@/components/Icon";
+import PageHeading from "@/components/PageHeading";
 import { buildMonthGrid, monthLength, monthStats, type Day } from "@/lib/calendar";
 import { listMedicationChanges, type MedicationChange } from "@/lib/data/medications";
 import { listSeizuresBetween, type Seizure } from "@/lib/data/seizures";
@@ -101,7 +103,7 @@ function DayCell({ day, month, today, selected }: { day: Day; month: Month; toda
       aria-label={label}
       aria-current={selected ? "date" : undefined}
       className={`flex min-h-14 flex-col items-center rounded-xl pt-1.5 ${shade(day.count)} ${
-        day.key === today ? "border-2 border-foreground" : "border border-border"
+        day.key === today ? "border-2 border-brand" : "border border-border"
       } ${selected ? "outline-3 outline-offset-2 outline-brand" : ""}`}
     >
       <span className="text-sm font-semibold leading-tight">{day.dayOfMonth}</span>
@@ -157,7 +159,7 @@ function DayList({ day, seizures, medChanges }: { day: string; seizures: Seizure
                   </span>
                 </span>
                 <span aria-hidden="true" className="text-xl text-muted">
-                  ›
+                  <Icon name="right" />
                 </span>
               </Link>
             </li>
@@ -183,19 +185,19 @@ async function CalendarContent({ searchParams }: { searchParams: SearchParams })
   const { weeks } = buildMonthGrid(shown.year, shown.month, seizures, medChanges);
   const dayInMonth = selectedDay?.startsWith(monthParam(shown)) ? selectedDay : null;
 
-  const arrowClass = "flex size-12 items-center justify-center rounded-xl border-2 border-border bg-surface text-2xl";
+  const arrowClass = "hover:border-brand hover:text-brand flex size-12 items-center justify-center rounded-xl border-2 border-border bg-surface text-2xl";
   return (
     <>
       <section aria-labelledby="month-heading" className="sw-card flex flex-col gap-4 p-4">
         <div className="flex items-center justify-between gap-2">
           <Link href={`/calendar?month=${monthParam(shiftMonth(shown, -1))}`} scroll={false} aria-label="Previous month" className={arrowClass}>
-            ‹
+            <Icon name="left" />
           </Link>
-          <h2 id="month-heading" className="text-2xl font-semibold">
+          <h2 id="month-heading" className="text-xl font-bold sm:text-2xl">
             {formatMonth(shown.year, shown.month)}
           </h2>
           <Link href={`/calendar?month=${monthParam(shiftMonth(shown, 1))}`} scroll={false} aria-label="Next month" className={arrowClass}>
-            ›
+            <Icon name="right" />
           </Link>
         </div>
         <p className="text-base font-medium">{statsText(seizures, shown, today)}</p>
@@ -250,7 +252,7 @@ async function CalendarContent({ searchParams }: { searchParams: SearchParams })
 export default function CalendarPage({ searchParams }: PageProps<"/calendar">) {
   return (
     <main className="flex flex-col gap-6">
-      <h1 className="text-4xl font-semibold">Calendar</h1>
+      <PageHeading title="Calendar" description="See patterns, one day at a time." icon="calendar" />
       <Suspense fallback={<p className="mt-2 text-center text-base text-muted">Loading…</p>}>
         <CalendarContent searchParams={searchParams} />
       </Suspense>

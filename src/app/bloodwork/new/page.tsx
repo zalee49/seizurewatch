@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
+import PageHeading from "@/components/PageHeading";
 import { listDraws } from "@/lib/data/bloodwork";
 import { getDb } from "@/lib/db/client";
 import { householdDateTimeValue } from "@/lib/time";
@@ -22,7 +23,7 @@ async function NewDrawContent() {
 export default function NewBloodworkPage() {
   return (
     <main className="flex flex-col gap-6">
-      <h1 className="text-4xl font-semibold">Add bloodwork</h1>
+      <PageHeading title="Add bloodwork" description="Keep lab results together in one place." icon="flask" />
       <Suspense fallback={<p className="mt-2 text-center text-base text-muted">Loading…</p>}>
         <NewDrawContent />
       </Suspense>

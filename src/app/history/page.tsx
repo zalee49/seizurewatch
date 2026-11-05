@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
+import PageHeading from "@/components/PageHeading";
 import { getProfile } from "@/lib/data/profile";
 import { getDb } from "@/lib/db/client";
 import { todayKey } from "@/lib/time";
@@ -19,7 +20,7 @@ async function ProfileContent() {
 export default function HistoryPage() {
   return (
     <main className="flex flex-col gap-6">
-      <h1 className="text-4xl font-semibold">History</h1>
+      <PageHeading title="History" description="Their story, health details, and vet contacts." icon="history" />
       <Suspense fallback={<p className="mt-2 text-center text-base text-muted">Loading…</p>}>
         <ProfileContent />
       </Suspense>

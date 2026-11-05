@@ -32,7 +32,7 @@ const ROLE_OPTIONS = [
   { value: "rescue", label: "Rescue" },
 ] as const;
 
-const primaryButton = "min-h-14 w-full rounded-xl bg-brand text-lg font-bold text-background disabled:opacity-60";
+const primaryButton = "min-h-14 w-full rounded-xl bg-brand text-lg font-bold text-brand-foreground disabled:opacity-60";
 const secondaryButton = "min-h-tap rounded-xl border-2 border-border px-4 text-base font-semibold";
 
 // Runs `action`, calls `onDone` when it saves, and submits by hand so React doesn't reset the
@@ -463,7 +463,7 @@ export function MedicationActions({ period, today }: { period: PeriodView; today
             aria-expanded={open === panel}
             onClick={() => setOpen(open === panel ? null : panel)}
             className={`min-h-tap rounded-xl border-2 px-4 text-base font-semibold ${
-              open === panel ? "border-brand bg-brand text-background" : "border-border text-foreground"
+              open === panel ? "border-brand bg-brand text-brand-foreground" : "border-border text-foreground"
             }`}
           >
             {label}

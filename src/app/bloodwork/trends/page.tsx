@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { connection } from "next/server";
+import Icon from "@/components/Icon";
+import PageHeading from "@/components/PageHeading";
 import { listTrendSeries } from "@/lib/data/bloodwork";
 import { listMedicationChanges } from "@/lib/data/medications";
 import { getDb } from "@/lib/db/client";
@@ -20,7 +22,16 @@ async function TrendsContent() {
   const db = getDb();
   const series = await listTrendSeries(db);
   if (series.length === 0) {
-    return <p className="text-lg text-muted">Charts appear once a test has been recorded twice.</p>;
+    return (
+      <section className="sw-card flex flex-col items-center gap-3 p-8 text-center">
+        <span className="rounded-2xl bg-accent/10 p-4 text-accent"><Icon name="chart" className="size-8" /></span>
+        <h2 className="text-xl font-semibold">A clearer picture over time</h2>
+        <p className="text-base text-muted">Charts appear once a test has been recorded twice.</p>
+        <Link href="/bloodwork/new" className="mt-1 flex min-h-tap items-center gap-2 rounded-xl bg-brand px-5 font-semibold text-brand-foreground">
+          <Icon name="plus" className="size-5" /> Add bloodwork
+        </Link>
+      </section>
+    );
   }
 
   // Every series has 2+ points, oldest first. Load the changes once for the span of all of them.
@@ -70,9 +81,9 @@ export default function TrendsPage() {
   return (
     <main className="flex flex-col gap-6">
       <Link href="/bloodwork" className="inline-flex min-h-tap items-center self-start text-lg font-semibold text-brand">
-        ← Bloodwork
+        <Icon name="left" className="mr-1 size-5" /> Bloodwork
       </Link>
-      <h1 className="text-4xl font-semibold">Trends</h1>
+      <PageHeading title="Trends" description="Follow lab results alongside medication changes." icon="chart" />
       <Suspense fallback={<p className="mt-2 text-center text-base text-muted">Loading…</p>}>
         <TrendsContent />
       </Suspense>

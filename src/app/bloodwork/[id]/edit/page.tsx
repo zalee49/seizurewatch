@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
+import PageHeading from "@/components/PageHeading";
 import { getDraw } from "@/lib/data/bloodwork";
 import { getDb } from "@/lib/db/client";
 import { householdDateTimeValue } from "@/lib/time";
@@ -39,7 +40,7 @@ async function EditContent({ params }: { params: Promise<{ id: string }> }) {
 export default function EditBloodworkPage({ params }: PageProps<"/bloodwork/[id]/edit">) {
   return (
     <main className="flex flex-col gap-6">
-      <h1 className="text-4xl font-semibold">Edit bloodwork</h1>
+      <PageHeading title="Edit bloodwork" description="Update the details of this lab visit." icon="flask" />
       <Suspense fallback={<p className="mt-2 text-center text-base text-muted">Loading…</p>}>
         <EditContent params={params} />
       </Suspense>

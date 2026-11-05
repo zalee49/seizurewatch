@@ -51,7 +51,7 @@ export function ToggleGroup<T extends string>({
               aria-pressed={selected}
               onClick={() => onChange(selected ? null : option.value)}
               className={`min-h-14 rounded-xl border-2 px-2 text-base font-semibold ${
-                selected ? "border-brand bg-brand text-background" : "border-border bg-surface text-foreground"
+                selected ? "border-brand bg-brand text-brand-foreground" : "border-border bg-surface text-foreground"
               }`}
             >
               {option.label}

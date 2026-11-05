@@ -1,3 +1,6 @@
+import Link from "next/link";
+import Icon from "@/components/Icon";
+import PageHeading from "@/components/PageHeading";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import SeizureButton from "@/components/SeizureButton";
@@ -19,7 +22,8 @@ async function HomeContent() {
 
   return (
     <>
-      <section aria-label="Since the last seizure" className="sw-card p-6">
+      <section aria-label="Since the last seizure" className="sw-card sw-summary p-6">
+        <p className="mb-3 flex items-center gap-2 text-sm font-bold text-brand"><Icon name="activity" className="size-5" /> At a glance</p>
         {last ? (
           <>
             <p className="text-2xl font-semibold tracking-tight">
@@ -37,7 +41,16 @@ async function HomeContent() {
         active={active ? { id: active.id, startedAt: active.startedAt } : null}
         last={last ? { id: last.id, startedAt: last.startedAt, endedAt: last.endedAt } : null}
       />
-
+      <div className="sw-quick-links grid grid-cols-2 gap-3" aria-label="Quick links">
+        <Link href="/calendar" className="sw-card flex min-h-24 items-center gap-3 p-4 font-semibold">
+          <span className="rounded-xl bg-brand/10 p-2 text-brand"><Icon name="calendar" /></span>
+          Calendar
+        </Link>
+        <Link href="/meds" className="sw-card flex min-h-24 items-center gap-3 p-4 font-semibold">
+          <span className="rounded-xl bg-accent/10 p-2 text-accent"><Icon name="pill" /></span>
+          Meds
+        </Link>
+      </div>
     </>
   );
 }
@@ -46,7 +59,7 @@ async function HomeContent() {
 export default function HomePage() {
   return (
     <main className="flex flex-col gap-6">
-      <div><p className="mb-1 text-sm font-semibold uppercase tracking-[0.16em] text-muted">Your daily companion</p><h1 className="text-4xl font-semibold">Today</h1><p className="mt-2 text-muted">A little clarity, one day at a time.</p></div>
+      <PageHeading title="Today" description="Here for every moment." icon="sun" />
       <Suspense fallback={<p className="text-center mt-2 text-base text-muted">Loading…</p>}>
         <HomeContent />
       </Suspense>

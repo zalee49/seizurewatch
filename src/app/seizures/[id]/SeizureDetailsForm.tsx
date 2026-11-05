@@ -212,7 +212,7 @@ export default function SeizureDetailsForm({ seizure }: { seizure: SeizureFormVa
       <button
         type="submit"
         disabled={pending}
-        className="min-h-14 w-full rounded-xl bg-brand text-lg font-bold text-background disabled:opacity-60"
+        className="min-h-14 w-full rounded-xl bg-brand text-lg font-bold text-brand-foreground disabled:opacity-60"
       >
         {pending ? "Saving…" : "Save details"}
       </button>

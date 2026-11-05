@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { connection } from "next/server";
+import Icon from "@/components/Icon";
+import PageHeading from "@/components/PageHeading";
 import { listDraws, type BloodResult } from "@/lib/data/bloodwork";
 import { getDb } from "@/lib/db/client";
 import { formatDate, formatTime } from "@/lib/format";
@@ -80,13 +82,13 @@ async function BloodworkContent() {
 export default function BloodworkPage() {
   return (
     <main className="flex flex-col gap-6">
-      <h1 className="text-4xl font-semibold">Bloodwork</h1>
-      <div className="grid grid-cols-2 gap-3">
-        <Link href="/bloodwork/new" className={`${linkButton} min-h-14 bg-brand text-lg font-bold text-background`}>
-          Add bloodwork
+      <PageHeading title="Bloodwork" description="Lab results and a clearer view of changes." icon="flask" />
+      <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
+        <Link href="/bloodwork/new" className={`${linkButton} min-h-14 bg-brand font-bold text-brand-foreground`}>
+          <Icon name="plus" className="mr-2 size-5" /> Add bloodwork
         </Link>
         <Link href="/bloodwork/trends" className={`${linkButton} min-h-14 border-2 border-border`}>
-          Trends
+          <Icon name="chart" className="mr-2 size-5" /> Trends
         </Link>
       </div>
       <Suspense fallback={<p className="mt-2 text-center text-base text-muted">Loading…</p>}>

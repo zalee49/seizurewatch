@@ -1,5 +1,6 @@
 "use client";
 
+import Icon from "@/components/Icon";
 import Link from "next/link";
 import { useRef, useState, useSyncExternalStore } from "react";
 import { startSeizureAction, stopSeizureAction } from "@/app/seizures/actions";
@@ -200,7 +201,7 @@ export default function SeizureButton({
   return (
     <section aria-label="Log a seizure" data-compact={shown !== null} className="flex flex-col gap-4">
       {isActive && shown && (
-        <div className="rounded-3xl border-2 border-alert bg-surface p-4 text-center">
+        <div className="sw-live rounded-3xl border-2 border-alert bg-surface p-4 text-center">
           <p className="text-lg font-medium text-muted">Seizure in progress</p>
           <p className="text-7xl font-bold tabular-nums" aria-live="off">
             {seconds === null ? "--:--" : formatTimer(seconds - Math.floor(shown.startedAt.getTime() / 1000))}
@@ -218,7 +219,7 @@ export default function SeizureButton({
           disabled={saving !== null}
           className="min-h-32 w-full rounded-2xl bg-foreground text-4xl font-bold text-background disabled:opacity-60"
         >
-          {stopLabel}
+          <span className="flex items-center justify-center gap-3"><Icon name="stop" className="size-8" />{stopLabel}</span>
         </button>
       )}
 
@@ -259,7 +260,7 @@ export default function SeizureButton({
           isActive ? "min-h-20 text-2xl" : "min-h-48 text-4xl"
         }`}
       >
-        {seizureLabel}
+        <span className="flex items-center justify-center gap-3"><Icon name="activity" className={isActive ? "size-7" : "size-9"} />{seizureLabel}</span>
       </button>
 
       {problem && (

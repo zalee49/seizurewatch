@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
+import PageHeading from "@/components/PageHeading";
 import { listCurrentMedications, listMedicationHistory, type MedicationPeriod } from "@/lib/data/medications";
 import { getDb } from "@/lib/db/client";
 import { formatDate, formatDoses } from "@/lib/format";
@@ -128,7 +129,7 @@ async function MedsContent() {
 export default function MedsPage() {
   return (
     <main className="flex flex-col gap-6">
-      <h1 className="text-4xl font-semibold">Meds</h1>
+      <PageHeading title="Meds" description="Daily routines and rescue medications." icon="pill" />
       <Suspense fallback={<p className="mt-2 text-center text-base text-muted">Loading…</p>}>
         <MedsContent />
       </Suspense>

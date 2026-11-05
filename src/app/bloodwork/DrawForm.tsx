@@ -28,7 +28,7 @@ export type DrawFormDraw = {
 
 type RowField = keyof RowValues;
 
-const primaryButton = "min-h-14 w-full rounded-xl bg-brand text-lg font-bold text-background disabled:opacity-60";
+const primaryButton = "min-h-14 w-full rounded-xl bg-brand text-lg font-bold text-brand-foreground disabled:opacity-60";
 const secondaryButton =
   "flex min-h-tap items-center justify-center rounded-xl border-2 border-border px-4 text-base font-semibold";
 
@@ -97,7 +97,7 @@ export default function DrawForm({
   const describedBy = (name: string) => (errors[name] ? `${fieldId(name)}-error` : undefined);
 
   return (
-    <form onSubmit={submit} aria-label={draw ? "Edit bloodwork" : "New bloodwork"} className="flex flex-col gap-4">
+    <form onSubmit={submit} aria-label={draw ? "Edit bloodwork" : "New bloodwork"} className="sw-card flex flex-col gap-4 p-5">
       {draw && (
         <>
           <input type="hidden" name="id" value={draw.id} />
