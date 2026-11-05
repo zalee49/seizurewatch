@@ -12,13 +12,13 @@ Tapping a day on the calendar today shows a plain list of that day's seizures. T
 
 ## How to read this plan
 
-- **Each task is one agent's assignment**, start to commit. List the headings with `rg -n "^### " Roadmap/day-timeline.md` and read your task to the next heading, this section, the decisions your task cites, and the Non-goals appendix. Nothing else.
+- **Each task is one agent's assignment**, start to commit. List the headings with `rg -n "^### " Roadmap/archive/day-timeline.md` and read your task to the next heading, this section, the decisions your task cites, and the Non-goals appendix. Nothing else.
 - **Landing a task:** run only the test file you touched (focused command in `AGENTS.md`), plus `npm run lint` and `npm run typecheck`. Flip its `- [ ]` to `- [x]` in the same diff, write **As built**, and commit before the next task. Format and rules: `.agents/skills/roadmap/SKILL.md`.
 - **No self-review.** After the commit, stop. Do not run any reviewer on your work; the operator chooses who reviews, and when.
 - **Read the Next.js docs first.** This is Next.js 16; read the guide in `node_modules/next/dist/docs/` for any API you use.
 - **One task per phase.** The time-placement logic and the chart that draws it share one interface, so one agent builds both (sizing rule: coupled work is one task). Phase 2 extends the same chart.
 - **Where numbers come from:** dose labels in production read 2026-11-05 (Baseline); the 6 AM and 6 PM times are the operator's (DL-D1).
-- **Differs from the standard:** like `Roadmap/v1.md`, the phase review block has a second checkbox for the operator's deploy.
+- **Differs from the standard:** like `Roadmap/archive/v1.md`, the phase review block has a second checkbox for the operator's deploy.
 
 ---
 
