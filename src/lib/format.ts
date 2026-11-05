@@ -58,3 +58,12 @@ export function formatDoses(doses: { amount: number; when: string }[], unit: str
   if (doses.length === 0) return "Dose not recorded";
   return doses.map((dose) => `${dose.amount} ${unit} ${dose.when}`).join(", ");
 }
+
+// "6:00 AM" from minutes after midnight; `short` gives "6 AM" on the hour. 1440 is the closing midnight.
+export function formatMinuteOfDay(minute: number, short = false): string {
+  const hour = Math.floor((minute % 1440) / 60);
+  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+  const minutes = minute % 60;
+  const time = short && minutes === 0 ? `${hour12}` : `${hour12}:${String(minutes).padStart(2, "0")}`;
+  return `${time} ${hour < 12 ? "AM" : "PM"}`;
+}

@@ -8,17 +8,18 @@ import { listCurrentMedications, listMedicationChanges, type MedicationChange } 
 import { listSeizuresBetween, type Seizure } from "@/lib/data/seizures";
 import { getDb } from "@/lib/db/client";
 import { buildDayTimeline, type DayTimeline as DayTimelineData } from "@/lib/dayTimeline";
-import { formatDate, formatDuration, formatMonth, formatTime } from "@/lib/format";
+import { buildDayAgenda } from "@/lib/dayAgenda";
+import { formatDate, formatDuration, formatMonth } from "@/lib/format";
 import { dayKey, monthBounds, todayKey } from "@/lib/time";
-import { MAX_SEIZURE_SECONDS, type Severity } from "@/lib/validation/seizure";
+import { MAX_SEIZURE_SECONDS } from "@/lib/validation/seizure";
 
+import { DayAgenda } from "./DayAgenda";
 import { DayTimeline } from "./DayTimeline";
 
 type Month = { year: number; month: number };
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const SEVERITY_LABELS: Record<Severity, string> = { mild: "Mild", moderate: "Moderate", severe: "Severe" };
 
 // Navigation, not data: anything malformed or out of range is ignored.
 function parseMonth(value: unknown): Month | null {
@@ -138,9 +139,6 @@ function DayList({
   const onDay = seizures.filter((seizure) => dayKey(seizure.startedAt) === day);
   return (
     <section aria-labelledby="day-heading" className="sw-card flex flex-col gap-3 p-5">
-      <h2 id="day-heading" className="text-xl font-semibold">
-        {formatDate(day)}
-      </h2>
       <DayTimeline timeline={timeline} dateLabel={formatDate(day)} />
       {timeline.notPlaced.length > 0 && (
         <ul className="flex flex-col gap-1 text-base text-muted">
@@ -162,31 +160,10 @@ function DayList({
           ))}
         </ul>
       )}
-      {onDay.length === 0 ? (
-        <p className="text-base text-muted">No seizures on this day.</p>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {onDay.map((seizure) => (
-            <li key={seizure.id}>
-              <Link
-                href={`/seizures/${seizure.id}`}
-                className="flex min-h-14 items-center justify-between gap-3 rounded-xl border-2 border-border px-4 py-2"
-              >
-                <span>
-                  <span className="block text-lg font-semibold">{formatTime(seizure.startedAt)}</span>
-                  <span className="block text-sm text-muted">
-                    {durationText(seizure)}
-                    {seizure.severity && ` · ${SEVERITY_LABELS[seizure.severity]}`}
-                  </span>
-                </span>
-                <span aria-hidden="true" className="text-xl text-muted">
-                  <Icon name="right" />
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      <DayAgenda
+        rows={buildDayAgenda(timeline)}
+        durationTexts={Object.fromEntries(onDay.map((seizure) => [seizure.id, durationText(seizure)]))}
+      />
     </section>
   );
 }

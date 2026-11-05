@@ -80,6 +80,8 @@ time.
   as its own roadmap in this folder.
 - **Day timeline:** tap a calendar day to see its seizures on a 24-hour timeline against
   his 6 AM and 6 PM doses and any rescue meds given. Plan: `Roadmap/archive/day-timeline.md`.
+- **Day views:** a scrollable list of the day's doses and seizures as the main day view,
+  with a swipeable full-screen chart behind a Chart button. Plan: `Roadmap/day-views.md`.
 - **Next:** a print-friendly vet summary (seizures over a chosen period, current meds and
   recent changes, latest bloodwork), saved as PDF or printed from the phone.
 - **Later, if wanted:** attaching lab reports to bloodwork; access protection; more than

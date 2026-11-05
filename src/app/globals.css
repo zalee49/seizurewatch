@@ -113,3 +113,6 @@ input::placeholder, textarea::placeholder { color: var(--sw-muted); opacity: 0.8
 main:has([data-compact="true"]) > section[aria-label="Since the last seizure"] { order: 2; }
 main:has([data-compact="true"]) .sw-page-description { display: none; }
 body:has([data-compact="true"]) header { margin-bottom: 1rem; }
+/* A day-list row the strip just jumped to. A colour fade, not motion, so it stays under reduced motion. */
+.sw-flash { animation: sw-flash 1.2s ease-out; }
+@keyframes sw-flash { from { background: var(--sw-glow); } to { background: transparent; } }

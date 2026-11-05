@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type PointerEvent } from "react";
 import Link from "next/link";
 import {
   CartesianGrid,
@@ -9,19 +9,20 @@ import {
   ResponsiveContainer,
   Scatter,
   ScatterChart,
-  Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import Icon from "@/components/Icon";
 import type { DayTimeline as DayTimelineData } from "@/lib/dayTimeline";
-import { formatDuration } from "@/lib/format";
+import { formatDuration, formatMinuteOfDay } from "@/lib/format";
 import {
   ZOOM_SPANS,
   centeredWindow,
+  dragWindow,
   minuteAtX,
-  overlapsWindow,
+  nearestPointIndex,
   shiftWindow,
+  snapWindow,
   windowTicks,
   zoomIn,
   type ZoomWindow,
@@ -37,27 +38,22 @@ const CHART_MARGIN = { top: 8, right: 8, bottom: 0, left: 0 };
 const Y_AXIS_WIDTH = 68;
 const X_AXIS_HEIGHT = 30;
 const X_PADDING = { left: 12, right: 12 };
+// A horizontal move this far (px) is a swipe, never a tap.
+const DRAG_PX = 8;
 
 const SPAN_TEXT: Record<number, string> = { 1440: "24 h", 360: "6 h", 60: "1 h", 15: "15 min" };
 const ROW_TEXT: Record<number, string> = { [MEDS_ROW]: "Meds", [SEIZURES_ROW]: "Seizures" };
 
-// `lines` are shown one per row in the tooltip, after the time.
-type TimelinePoint = { minute: number; row: number; lines: string[] };
+// `lines` are shown one per row in the details panel, after the time. `index` is the point's place in
+// `ChartData.points`, which a tapped dot carries as `data-point`.
+type TimelinePoint = { index: number; minute: number; row: number; lines: string[]; seizureId?: string };
 type ChartData = {
   meds: TimelinePoint[];
   rescue: TimelinePoint[];
   seizures: TimelinePoint[];
+  points: TimelinePoint[];
   bands: { start: number; end: number }[];
 };
-
-// "6:00 AM" from minutes after midnight; `short` gives "6 AM" on the hour. 1440 is the closing midnight.
-function clockText(minute: number, short = false): string {
-  const hour = Math.floor((minute % 1440) / 60);
-  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
-  const minutes = minute % 60;
-  const time = short && minutes === 0 ? `${hour12}` : `${hour12}:${String(minutes).padStart(2, "0")}`;
-  return `${time} ${hour < 12 ? "AM" : "PM"}`;
-}
 
 const doseText = (amount: number | null, unit: string | null) =>
   amount === null ? "" : ` ${amount}${unit ? ` ${unit}` : ""}`;
@@ -69,22 +65,36 @@ const scheduledText = (dose: DayTimelineData["scheduled"][number]) =>
 const rescueText = (dose: DayTimelineData["rescue"][number]) =>
   `Rescue: ${dose.medicationName}${doseText(dose.doseAmount, dose.doseUnit)}`;
 const seizureText = (seizure: DayTimelineData["seizures"][number]) =>
-  `Seizure${seizure.severity ? `, ${seizure.severity}` : ""}`;
+  `Seizure${seizure.severity ? `, ${seizure.severity}` : ""}${
+    seizure.durationSeconds === null ? "" : ` · ${formatDuration(seizure.durationSeconds)}`
+  }`;
 
 function chartData(timeline: DayTimelineData): ChartData {
-  // Daily doses at the same time (6 AM has several) share one dot, so the tooltip lists them all.
+  // Daily doses at the same time (6 AM has several) share one dot, so the details list them all.
   const byMinute = new Map<number, string[]>();
   for (const dose of timeline.scheduled) {
     byMinute.set(dose.minute, [...(byMinute.get(dose.minute) ?? []), scheduledText(dose)]);
   }
+  let index = 0;
+  const meds = [...byMinute].map(([minute, lines]) => ({ index: index++, minute, row: MEDS_ROW, lines }));
+  const rescue = timeline.rescue.map((dose) => ({
+    index: index++,
+    minute: dose.minute,
+    row: MEDS_ROW,
+    lines: [rescueText(dose)],
+  }));
+  const seizures = timeline.seizures.map((seizure) => ({
+    index: index++,
+    minute: seizure.minute,
+    row: SEIZURES_ROW,
+    lines: [seizureText(seizure)],
+    seizureId: seizure.id,
+  }));
   return {
-    meds: [...byMinute].map(([minute, lines]) => ({ minute, row: MEDS_ROW, lines })),
-    rescue: timeline.rescue.map((dose) => ({ minute: dose.minute, row: MEDS_ROW, lines: [rescueText(dose)] })),
-    seizures: timeline.seizures.map((seizure) => ({
-      minute: seizure.minute,
-      row: SEIZURES_ROW,
-      lines: [seizureText(seizure)],
-    })),
+    meds,
+    rescue,
+    seizures,
+    points: [...meds, ...rescue, ...seizures],
     // A seizure that runs past midnight stops at the end of its start day.
     bands: timeline.seizures
       .filter((seizure) => seizure.durationSeconds !== null)
@@ -95,54 +105,69 @@ function chartData(timeline: DayTimelineData): ChartData {
   };
 }
 
-// Circle for doses and seizures, diamond for rescue doses, so the shape tells them apart as well as the colour.
-// `data-point` lets a tap on a dot open its tooltip instead of zooming.
-function Marker({ cx, cy, fill, diamond }: { cx?: number; cy?: number; fill: string; diamond?: boolean }) {
-  if (cx === undefined || cy === undefined) return <g />;
-  if (diamond) {
-    return (
-      <polygon
-        data-point=""
-        points={`${cx},${cy - 9} ${cx + 9},${cy} ${cx},${cy + 9} ${cx - 9},${cy}`}
-        fill={fill}
-        stroke="var(--sw-surface)"
-        strokeWidth={2}
-      />
-    );
-  }
-  return <circle data-point="" cx={cx} cy={cy} r={7} fill={fill} stroke="var(--sw-surface)" strokeWidth={2} />;
-}
+// Points at the same minute on the same row share one spot, so a rescue dose given at 6:00 PM sits
+// on the 6 PM daily doses: selecting one selects them all.
+const sameSpot = (a: TimelinePoint, b: TimelinePoint) => a.minute === b.minute && a.row === b.row;
 
-function PointTooltip({
-  active,
+// Circle for doses and seizures, diamond for rescue doses, so the shape tells them apart as well as the colour.
+// On the full-screen chart each dot sits on a larger invisible target carrying `data-point`, so a
+// tap near it selects it instead of zooming.
+function Marker({
+  cx,
+  cy,
   payload,
-  points,
+  fill,
+  diamond,
+  radius = 7,
+  interactive = false,
+  selected = null,
 }: {
-  active?: boolean;
-  payload?: { payload?: TimelinePoint }[];
-  points: TimelinePoint[];
+  cx?: number;
+  cy?: number;
+  payload?: TimelinePoint;
+  fill: string;
+  diamond?: boolean;
+  radius?: number;
+  interactive?: boolean;
+  selected?: TimelinePoint | null;
 }) {
-  const point = payload?.find((item) => item.payload)?.payload;
-  if (!active || !point) return null;
-  // Points at the same minute on the same row share one spot, so a rescue dose given at 6:00 PM sits
-  // on the 6 PM daily doses: list everything there, not only the point that was tapped.
-  const lines = points
-    .filter((other) => other.minute === point.minute && other.row === point.row)
-    .flatMap((other) => other.lines);
+  if (cx === undefined || cy === undefined) return <g />;
+  const reach = radius + 2;
+  const shape = diamond ? (
+    <polygon
+      points={`${cx},${cy - reach} ${cx + reach},${cy} ${cx},${cy + reach} ${cx - reach},${cy}`}
+      fill={fill}
+      stroke="var(--sw-surface)"
+      strokeWidth={2}
+    />
+  ) : (
+    <circle cx={cx} cy={cy} r={radius} fill={fill} stroke="var(--sw-surface)" strokeWidth={2} />
+  );
+  if (!interactive || !payload) return shape;
   return (
-    <div className="sw-card max-w-60 rounded-xl px-3 py-2 text-base">
-      <p className="font-semibold">{clockText(point.minute)}</p>
-      <ul>
-        {lines.map((line, index) => (
-          <li key={index}>{line}</li>
-        ))}
-      </ul>
-    </div>
+    <g data-point={payload.index} className="cursor-pointer">
+      {selected && sameSpot(selected, payload) && (
+        <circle cx={cx} cy={cy} r={reach + 5} fill="none" stroke="var(--sw-foreground)" strokeWidth={2.5} />
+      )}
+      <circle cx={cx} cy={cy} r={22} fill="transparent" />
+      {shape}
+    </g>
   );
 }
 
 // Filter points and cut bands to the window here, keeping edge dots free of Recharts' clipping.
-function TimelineChart({ data, view, tooltips }: { data: ChartData; view: ZoomWindow; tooltips: boolean }) {
+// `interactive` is the full-screen chart: bigger dots with tap targets, and a ring on the selected one.
+function TimelineChart({
+  data,
+  view,
+  interactive = false,
+  selected = null,
+}: {
+  data: ChartData;
+  view: ZoomWindow;
+  interactive?: boolean;
+  selected?: TimelinePoint | null;
+}) {
   const end = view.start + view.span;
   const inView = (point: TimelinePoint) => point.minute >= view.start && point.minute <= end;
   const meds = data.meds.filter(inView);
@@ -155,6 +180,11 @@ function TimelineChart({ data, view, tooltips }: { data: ChartData; view: ZoomWi
   const bands = data.bands
     .map((band) => ({ start: Math.max(band.start, view.start), end: Math.min(band.end, end) }))
     .filter((band) => band.start < band.end);
+  const radius = !interactive ? 7 : view.span === 1440 ? 8 : 11;
+  const markerProps = { radius, interactive, selected };
+  // The range above the chart carries AM/PM, so zoomed-in ticks drop it and stay apart.
+  const tickText = (minute: number) =>
+    view.span >= 360 ? formatMinuteOfDay(minute, true) : formatMinuteOfDay(minute).replace(/ [AP]M$/, "");
 
   return (
     <ResponsiveContainer width="100%" height="100%">
@@ -167,7 +197,7 @@ function TimelineChart({ data, view, tooltips }: { data: ChartData; view: ZoomWi
           allowDataOverflow={noPoints}
           ticks={windowTicks(view)}
           interval="equidistantPreserveStart"
-          tickFormatter={(minute: number) => clockText(minute, view.span >= 360)}
+          tickFormatter={tickText}
           padding={X_PADDING}
           height={X_AXIS_HEIGHT}
           tick={{ fill: "var(--sw-muted)", fontSize: 13 }}
@@ -199,18 +229,13 @@ function TimelineChart({ data, view, tooltips }: { data: ChartData; view: ZoomWi
             stroke="none"
           />
         ))}
-        <Scatter data={meds} shape={<Marker fill="var(--sw-brand)" />} isAnimationActive={false} />
-        <Scatter data={rescue} shape={<Marker fill="var(--sw-accent)" diamond />} isAnimationActive={false} />
-        <Scatter data={seizures} shape={<Marker fill="var(--sw-alert)" />} isAnimationActive={false} />
-        {tooltips && (
-          <Tooltip
-            trigger="click"
-            content={<PointTooltip points={[...meds, ...rescue, ...seizures]} />}
-            cursor={false}
-            wrapperStyle={{ zIndex: 10 }}
-            isAnimationActive={false}
-          />
-        )}
+        <Scatter data={meds} shape={<Marker fill="var(--sw-brand)" {...markerProps} />} isAnimationActive={false} />
+        <Scatter
+          data={rescue}
+          shape={<Marker fill="var(--sw-accent)" diamond {...markerProps} />}
+          isAnimationActive={false}
+        />
+        <Scatter data={seizures} shape={<Marker fill="var(--sw-alert)" {...markerProps} />} isAnimationActive={false} />
       </ScatterChart>
     </ResponsiveContainer>
   );
@@ -235,28 +260,120 @@ function Legend() {
   );
 }
 
-type ListItem = { key: string; minute: number; endMinute?: number; text: string; href?: string };
+const OVERVIEW_MARK: Record<string, string> = {
+  meds: "rounded-full bg-brand",
+  rescue: "rotate-45 bg-accent",
+  seizures: "rounded-full bg-alert",
+};
 
-// Include seizures continuing into the window as well as the dots that start in it.
-function windowItems(timeline: DayTimelineData, view: ZoomWindow): ListItem[] {
-  const items: ListItem[] = [
-    ...timeline.scheduled.map((dose, index) => ({
-      key: `dose-${index}`,
-      minute: dose.minute,
-      text: scheduledText(dose),
-    })),
-    ...timeline.rescue.map((dose, index) => ({ key: `rescue-${index}`, minute: dose.minute, text: rescueText(dose) })),
-    ...timeline.seizures.map((seizure) => ({
-      key: seizure.id,
-      minute: seizure.minute,
-      endMinute: Math.min(seizure.minute + (seizure.durationSeconds ?? 0) / 60, 1440),
-      text: `${seizureText(seizure)}${seizure.durationSeconds === null ? "" : ` · ${formatDuration(seizure.durationSeconds)}`}`,
-      href: `/seizures/${seizure.id}`,
-    })),
-  ];
-  return items
-    .filter((item) => overlapsWindow(item.minute, item.endMinute ?? item.minute, view))
-    .sort((a, b) => a.minute - b.minute);
+// The whole day under the chart, with the visible stretch boxed. A tap jumps there.
+function Overview({ data, view, onJump }: { data: ChartData; view: ZoomWindow; onJump: (minute: number) => void }) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const percent = (minute: number) => `${(minute / 1440) * 100}%`;
+
+  function handleClick(event: MouseEvent<HTMLDivElement>) {
+    const box = trackRef.current?.getBoundingClientRect();
+    if (!box || box.width <= 0) return;
+    const minute = ((event.clientX - box.left) / box.width) * 1440;
+    onJump(Math.min(1440, Math.max(0, minute)));
+  }
+
+  return (
+    <div role="img" aria-label="Where the chart is in the day" onClick={handleClick} className="h-10 cursor-pointer px-2">
+      <div ref={trackRef} className="relative h-6">
+        <div
+          className="absolute inset-y-0 min-w-1.5 rounded-md border-2 border-brand"
+          style={{
+            left: percent(view.start),
+            width: percent(view.span),
+            background: "color-mix(in srgb, var(--sw-brand) 14%, transparent)",
+          }}
+        />
+        <div className="absolute inset-x-0 top-1/2 h-0.5 -translate-y-1/2 bg-border" />
+        {(["meds", "rescue", "seizures"] as const).flatMap((kind) =>
+          data[kind].map((point) => (
+            <span
+              key={point.index}
+              className={`absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 ${OVERVIEW_MARK[kind]}`}
+              style={{ left: percent(point.minute) }}
+            />
+          )),
+        )}
+      </div>
+      <div className="relative h-4 text-xs text-muted">
+        <span className="absolute left-0">12 AM</span>
+        <span className="absolute left-1/2 -translate-x-1/2">12 PM</span>
+        <span className="absolute right-0">12 AM</span>
+      </div>
+    </div>
+  );
+}
+
+// Everything at the selected dot's spot, with a link to each seizure there.
+function Details({ data, selected }: { data: ChartData; selected: TimelinePoint | null }) {
+  if (!selected) {
+    return (
+      <div aria-live="polite" className="flex min-h-19 items-center rounded-xl border-2 border-border p-3 text-base text-muted">
+        Tap a dot to see what happened then.
+      </div>
+    );
+  }
+  return (
+    <div aria-live="polite" className="flex min-h-19 flex-col gap-1 rounded-xl border-2 border-border p-3 text-base">
+      <p className="font-semibold">{formatMinuteOfDay(selected.minute)}</p>
+      <ul className="flex flex-col gap-1">
+        {data.points
+          .filter((point) => sameSpot(point, selected))
+          .map((point) => (
+            <li key={point.index}>
+              {point.lines.map((line, index) => (
+                <p key={index}>{line}</p>
+              ))}
+              {point.seizureId && (
+                <Link href={`/seizures/${point.seizureId}`} className="inline-flex min-h-11 items-center font-semibold text-brand">
+                  Open this seizure ›
+                </Link>
+              )}
+            </li>
+          ))}
+      </ul>
+    </div>
+  );
+}
+
+// The plot area inside a chart wrapper, in px from the wrapper's left edge.
+function plotEdges(element: Element) {
+  const box = element.getBoundingClientRect();
+  const plotLeft = CHART_MARGIN.left + Y_AXIS_WIDTH + X_PADDING.left;
+  return { box, plotLeft, plotWidth: box.width - plotLeft - X_PADDING.right - CHART_MARGIN.right };
+}
+
+// The minute under a point on the plot, or null for one in the axis margins.
+function plotMinute(element: Element, clientX: number, clientY: number, view: ZoomWindow): number | null {
+  const { box, plotLeft, plotWidth } = plotEdges(element);
+  const y = clientY - box.top;
+  if (y < CHART_MARGIN.top || y > box.height - CHART_MARGIN.bottom - X_AXIS_HEIGHT) return null;
+  return minuteAtX(clientX - box.left, plotLeft, plotWidth, view);
+}
+
+// Scroll the day list (DayAgenda, in the same card) to the row nearest the tapped time and flash it.
+function jumpToNearestRow(event: MouseEvent<HTMLDivElement>) {
+  const minute = plotMinute(event.currentTarget, event.clientX, event.clientY, FULL_DAY);
+  const card = event.currentTarget.closest("section");
+  if (minute === null || !card) return;
+  let nearest: HTMLElement | null = null;
+  let nearestDistance = Infinity;
+  for (const row of card.querySelectorAll<HTMLElement>("[data-agenda-minute]")) {
+    const distance = Math.abs(Number(row.dataset.agendaMinute) - minute);
+    if (distance < nearestDistance) [nearest, nearestDistance] = [row, distance];
+  }
+  if (!nearest) return;
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  nearest.scrollIntoView({ block: "center", behavior: reduceMotion ? "auto" : "smooth" });
+  // Restart the flash if the same row is tapped twice.
+  nearest.classList.remove("sw-flash");
+  void nearest.offsetWidth;
+  nearest.classList.add("sw-flash");
 }
 
 const controlClass =
@@ -266,8 +383,23 @@ export function DayTimeline({ timeline, dateLabel }: { timeline: DayTimelineData
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<ZoomWindow>(FULL_DAY);
+  const [selected, setSelected] = useState<TimelinePoint | null>(null);
+  // The pointer gesture under way on the chart: one pointer at a time, a tap until it moves DRAG_PX sideways.
+  const gesture = useRef<{
+    pointerId: number;
+    x: number;
+    y: number;
+    start: number;
+    dragging: boolean;
+    point: number | null;
+  } | null>(null);
   const data = chartData(timeline);
   const end = view.start + view.span;
+  // A swipe in progress leaves the window between steps; show the times rounded.
+  const rangeText =
+    view.span === 1440
+      ? "Whole day"
+      : `${formatMinuteOfDay(Math.round(view.start))} – ${formatMinuteOfDay(Math.round(end))}`;
 
   // Following a seizure link keeps this page alive but hidden; an open modal left behind would
   // block the next page, so close it whenever this component is hidden or unmounted.
@@ -276,49 +408,95 @@ export function DayTimeline({ timeline, dateLabel }: { timeline: DayTimelineData
     return () => dialog?.close();
   }, []);
 
+  const counts = `${data.seizures.length === 0 ? "No seizures" : plural(data.seizures.length, "seizure")} · ${plural(data.rescue.length, "rescue dose")}`;
   const summary = `${plural(timeline.scheduled.length, "scheduled dose")}, ${plural(data.rescue.length, "rescue dose")}, ${plural(data.seizures.length, "seizure")}`;
 
   function openDialog() {
     setView(FULL_DAY);
+    setSelected(null);
+    gesture.current = null;
     setOpen(true);
     dialogRef.current?.showModal();
   }
 
-  // A tap on empty plot zooms in there; taps on a dot, the tooltip or the axes are left alone.
-  function handleChartClick(event: MouseEvent<HTMLDivElement>) {
-    const target = event.target as Element;
-    if (target.closest("[data-point], .recharts-tooltip-wrapper")) return;
-    const box = event.currentTarget.getBoundingClientRect();
-    const y = event.clientY - box.top;
-    if (y < CHART_MARGIN.top || y > box.height - CHART_MARGIN.bottom - X_AXIS_HEIGHT) return;
-    const plotLeft = CHART_MARGIN.left + Y_AXIS_WIDTH + X_PADDING.left;
-    const plotWidth = box.width - plotLeft - X_PADDING.right - CHART_MARGIN.right;
-    const minute = minuteAtX(event.clientX - box.left, plotLeft, plotWidth, view);
-    if (minute !== null) setView(zoomIn(view, minute));
+  function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
+    if (gesture.current || (event.pointerType === "mouse" && event.button !== 0)) return;
+    const points = Array.from(event.currentTarget.querySelectorAll<SVGGElement>("[data-point]")).map((point) => {
+      const box = point.getBoundingClientRect();
+      return { index: Number(point.dataset.point), x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    });
+    gesture.current = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      start: view.start,
+      dragging: false,
+      point: nearestPointIndex(points, event.clientX, event.clientY),
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
   }
 
-  const items = open ? windowItems(timeline, view) : [];
+  function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
+    const current = gesture.current;
+    if (!current || event.pointerId !== current.pointerId) return;
+    const dx = event.clientX - current.x;
+    if (!current.dragging && Math.abs(dx) < DRAG_PX) return;
+    current.dragging = true;
+    // The whole day has nowhere to move to.
+    if (view.span === 1440) return;
+    const { plotWidth } = plotEdges(event.currentTarget);
+    if (plotWidth <= 0) return;
+    setView(dragWindow({ start: current.start, span: view.span }, (-dx / plotWidth) * view.span));
+  }
+
+  // A tap selects the dot it started on, zooms in on empty plot, and does nothing in the axis margins.
+  function handlePointerUp(event: PointerEvent<HTMLDivElement>) {
+    const current = gesture.current;
+    if (!current || event.pointerId !== current.pointerId) return;
+    gesture.current = null;
+    if (current.dragging) {
+      setView(snapWindow);
+    } else if (current.point !== null) {
+      setSelected(data.points[current.point] ?? null);
+    } else {
+      const minute = plotMinute(event.currentTarget, current.x, current.y, view);
+      if (minute !== null) setView(zoomIn(view, minute));
+    }
+  }
+
+  // The browser took the gesture (a page scroll, say): land the window where it is.
+  function handlePointerCancel(event: PointerEvent<HTMLDivElement>) {
+    const current = gesture.current;
+    if (!current || event.pointerId !== current.pointerId) return;
+    gesture.current = null;
+    setView(snapWindow);
+  }
+
+  function jumpTo(minute: number) {
+    setView(centeredWindow(minute, view.span === 1440 ? 60 : view.span));
+  }
 
   return (
-    <div>
-      <button
-        type="button"
-        onClick={openDialog}
-        aria-label="Open the day's timeline"
-        aria-describedby="day-timeline-summary"
-        className="block w-full cursor-pointer rounded-xl text-left"
-      >
-        <span className="block h-[140px] w-full">
-          <TimelineChart data={data} view={FULL_DAY} tooltips={false} />
-        </span>
-        <span className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted">
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <h2 id="day-heading" className="text-xl font-semibold">
+          {dateLabel}
+        </h2>
+        <button type="button" onClick={openDialog} aria-haspopup="dialog" className={`${controlClass} gap-1.5 px-3.5`}>
+          <Icon name="chart" className="size-5" />
+          Chart
+        </button>
+      </div>
+      <p className="text-base text-muted">{counts}</p>
+      <div>
+        <div role="img" aria-label={summary} onClick={jumpToNearestRow} className="h-[140px] w-full cursor-pointer">
+          <TimelineChart data={data} view={FULL_DAY} />
+        </div>
+        <p className="mt-1 text-sm text-muted">Tap the strip to jump to a time.</p>
+        <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted">
           <Legend />
-          <span className="ml-auto font-semibold text-brand">Zoom</span>
-        </span>
-      </button>
-      <span id="day-timeline-summary" className="sr-only">
-        {summary}
-      </span>
+        </p>
+      </div>
 
       <dialog
         ref={dialogRef}
@@ -347,8 +525,8 @@ export function DayTimeline({ timeline, dateLabel }: { timeline: DayTimelineData
               >
                 <Icon name="left" />
               </button>
-              <p aria-live="polite" className="text-center text-lg font-semibold">
-                {view.span === 1440 ? "Whole day" : `${clockText(view.start)} – ${clockText(end)}`}
+              <p aria-live="polite" className="text-center text-lg font-semibold tabular-nums">
+                {rangeText}
               </p>
               <button
                 type="button"
@@ -377,45 +555,27 @@ export function DayTimeline({ timeline, dateLabel }: { timeline: DayTimelineData
               ))}
             </div>
 
-            <div className="sw-card flex flex-col gap-1 p-3">
-              {/* Remounted per window so an open tooltip never points at a dot that moved away. */}
+            <div className="sw-card flex flex-col gap-2 p-3">
               <div
-                key={`${view.start}-${view.span}`}
                 role="img"
-                aria-label={`Timeline, ${view.span === 1440 ? "whole day" : `${clockText(view.start)} to ${clockText(end)}`}`}
-                onClick={handleChartClick}
-                className="h-[260px] w-full [&_*:focus]:outline-none"
+                aria-label={`Timeline, ${view.span === 1440 ? "whole day" : rangeText.replace(" – ", " to ")}`}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerCancel}
+                onLostPointerCapture={handlePointerCancel}
+                className="h-[230px] w-full touch-pan-y select-none [&_*:focus]:outline-none"
               >
-                <TimelineChart data={data} view={view} tooltips />
+                <TimelineChart data={data} view={view} interactive selected={selected} />
               </div>
+              <Overview data={data} view={view} onJump={jumpTo} />
+              <p className="text-sm text-muted">Swipe to move · tap empty space to zoom in · tap a dot for details</p>
               <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted">
                 <Legend />
               </p>
             </div>
 
-            {items.length === 0 ? (
-              <p className="text-base text-muted">Nothing in this stretch</p>
-            ) : (
-              <ul className="flex flex-col gap-2">
-                {items.map((item) => {
-                  const line = `${clockText(item.minute)} · ${item.text}`;
-                  return (
-                    <li key={item.key}>
-                      {item.href ? (
-                        <Link
-                          href={item.href}
-                          className="flex min-h-12 items-center rounded-xl border-2 border-border bg-surface px-4 py-2 text-base font-medium"
-                        >
-                          {line}
-                        </Link>
-                      ) : (
-                        <p className="px-4 py-1 text-base">{line}</p>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
+            <Details data={data} selected={selected} />
           </div>
         )}
       </dialog>
