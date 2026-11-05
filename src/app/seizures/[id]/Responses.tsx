@@ -14,7 +14,7 @@ const KIND_OPTIONS = [
   { value: "other", label: "Other" },
 ] as const;
 
-type RescueMed = { drugName: string; doseAmount: number; doseUnit: string };
+type RescueMed = { drugName: string; doseAmount: number; doseUnit: string; when: string | null };
 
 function describe(response: SeizureResponse): string {
   if (response.kind === "rescue_med") {
@@ -146,9 +146,9 @@ function AddResponseForm({
             <div>
               <p className={labelClass}>Current rescue meds</p>
               <div className="flex flex-col gap-2">
-                {rescueMeds.map((med) => (
+                {rescueMeds.map((med, index) => (
                   <button
-                    key={med.drugName}
+                    key={`${med.drugName}-${index}`}
                     type="button"
                     onClick={() => {
                       setMedicationName(med.drugName);
@@ -158,6 +158,7 @@ function AddResponseForm({
                     className="min-h-tap rounded-xl border-2 border-brand px-3 text-base font-semibold text-brand"
                   >
                     {med.drugName} {med.doseAmount} {med.doseUnit}
+                    {med.when && ` (${med.when})`}
                   </button>
                 ))}
               </div>

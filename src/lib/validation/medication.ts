@@ -43,10 +43,56 @@ const doseAmount = z
     error: "Enter at most 3 decimal places",
   });
 
+export const MAX_DOSE_TIMES = 8;
+
+// One dose row as the form sent it: either field may be blank (null or undefined).
+const doseRowSchema = z.object({
+  amount: doseAmount.nullish().transform((value) => value ?? null),
+  when: z
+    .string({ error: "Enter text" })
+    .max(200, { error: "Keep this under 200 characters" })
+    .nullish()
+    .transform((value) => {
+      const trimmed = value?.trim();
+      return trimmed ? trimmed : null;
+    }),
+});
+type DoseRow = z.output<typeof doseRowSchema>;
+
+// One dose given at one time of day, like 500 at "morning" (the unit is the period's).
+export type DoseLine = { amount: number; when: string };
+
+const isBlankRow = (row: DoseRow) => row.amount === null && row.when === null;
+
+// Rows are checked by their index as sent (blank rows included), so the form can mark that row.
+// Blank rows are then dropped; the rest are stored in this order.
+const dosesSchema = z
+  .array(doseRowSchema, { error: "Enter the dose" })
+  .max(MAX_DOSE_TIMES, { error: `Keep this to ${MAX_DOSE_TIMES} times a day or fewer` })
+  .superRefine((rows, ctx) => {
+    const seen = new Map<string, number>();
+    rows.forEach((row, index) => {
+      if (isBlankRow(row)) return;
+      const issue = (field: keyof DoseRow, message: string) => ctx.addIssue({ code: "custom", path: [index, field], message });
+      if (row.amount === null) issue("amount", "Enter the dose");
+      if (row.when === null) {
+        issue("when", "Enter when it's given, like morning");
+        return;
+      }
+      const key = row.when.toLowerCase();
+      const first = seen.get(key);
+      if (first === undefined) seen.set(key, index);
+      else issue("when", `This time is already in row ${first + 1}`);
+    });
+    if (rows.every(isBlankRow)) ctx.addIssue({ code: "custom", path: [0, "amount"], message: "Enter the dose" });
+  })
+  .transform((rows): DoseLine[] =>
+    rows.filter((row) => !isBlankRow(row)).map((row) => ({ amount: row.amount as number, when: row.when as string })),
+  );
+
 export const doseSchema = z.object({
-  doseAmount,
+  doses: dosesSchema,
   doseUnit: requiredText("Enter the unit, like mg"),
-  schedule: requiredText("Enter when it's given, like twice daily"),
   note: optionalNote,
 });
 export type DoseInput = z.input<typeof doseSchema>;
@@ -69,3 +115,13 @@ export const correctPeriodSchema = startMedicationSchema
     }
   });
 export type CorrectPeriodInput = z.input<typeof correctPeriodSchema>;
+
+// First message per field. A dose row's field is keyed `doses.<row index>.<field>`.
+export function medicationFieldErrors(error: z.ZodError): Record<string, string> {
+  const fieldErrors: Record<string, string> = {};
+  for (const issue of error.issues) {
+    const key = issue.path.length > 0 ? issue.path.map(String).join(".") : "form";
+    fieldErrors[key] ??= issue.message;
+  }
+  return fieldErrors;
+}

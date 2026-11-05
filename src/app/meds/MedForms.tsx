@@ -13,7 +13,7 @@ import {
 import type { SaveResult } from "@/lib/data/result";
 import type { MedicationPeriod } from "@/lib/data/medications";
 import { FieldError, inputClass, labelClass, SaveProblem, textAreaClass, ToggleGroup } from "@/app/seizures/[id]/fields";
-import type { MedicationRole } from "@/lib/validation/medication";
+import { MAX_DOSE_TIMES, type MedicationRole } from "@/lib/validation/medication";
 import {
   changeMedicationAction,
   correctPeriodAction,
@@ -46,14 +46,17 @@ function useMedForm(action: PeriodAction, onDone: () => void) {
   const errors = state && !state.ok ? (state.fieldErrors ?? {}) : {};
   // Prefixes this form's element ids, so two open forms never share one.
   const idPrefix = useId();
+  // The dose rows' keys as submitted, so `doses.<i>` errors still land on the right row after rows are removed.
+  const [submittedKeys, setSubmittedKeys] = useState<string[]>([]);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
+    setSubmittedKeys(doseRowKeys(event.currentTarget));
     startTransition(() => formAction(formData));
   }
 
-  return { state, errors, pending, submit, idPrefix };
+  return { state, errors, pending, submit, idPrefix, submittedKeys };
 }
 
 const IdPrefix = createContext("");
@@ -87,42 +90,122 @@ function Field({
   );
 }
 
-// Dose, unit and schedule, prefilled when changing or fixing a period.
-function DoseFields({ errors, period }: { errors: Record<string, string>; period?: PeriodView }) {
+type DoseRow = { key: string; amount: string; when: string };
+
+// The keys of the dose rows in the form, in the order they appear.
+function doseRowKeys(form: HTMLFormElement): string[] {
+  return Array.from(form.querySelectorAll<HTMLElement>("[data-dose-key]"), (element) => element.dataset.doseKey ?? "");
+}
+
+// One Dose + When row per time of day, and one Unit for them all. Prefilled when changing or fixing a period.
+function DoseFields({
+  errors,
+  submittedKeys,
+  period,
+}: {
+  errors: Record<string, string>;
+  submittedKeys: string[];
+  period?: PeriodView;
+}) {
+  const prefix = useContext(IdPrefix);
+  const [rows, setRows] = useState<DoseRow[]>(() =>
+    period
+      ? period.doses.map((line, index) => ({ key: `dose-${index}`, amount: String(line.amount), when: line.when }))
+      : [{ key: "dose-0", amount: "", when: "" }],
+  );
+  // Rows get keys dose-0, dose-1, ... and a removed row's key is never reused.
+  const [nextKey, setNextKey] = useState(rows.length);
+
+  // `doses.<i>.*` errors name the row that was at index i when the form was submitted.
+  function rowError(rowKey: string, field: "amount" | "when"): string | undefined {
+    const index = submittedKeys.indexOf(rowKey);
+    return index === -1 ? undefined : errors[`doses.${index}.${field}`];
+  }
+
   return (
     <>
-      <div className="grid grid-cols-2 gap-3">
-        <Field name="doseAmount" label="Dose" errors={errors}>
-          <input
-            {...useFieldProps("doseAmount", errors)}
-            type="text"
-            inputMode="decimal"
-            required
-            defaultValue={period ? String(period.doseAmount) : ""}
-            className={inputClass}
-          />
-        </Field>
-        <Field name="doseUnit" label="Unit" errors={errors}>
-          <input
-            {...useFieldProps("doseUnit", errors)}
-            type="text"
-            required
-            placeholder="mg"
-            defaultValue={period?.doseUnit ?? ""}
-            className={inputClass}
-          />
-        </Field>
-      </div>
-      <Field name="schedule" label="How often" errors={errors}>
+      <Field name="doseUnit" label="Unit" errors={errors}>
         <input
-          {...useFieldProps("schedule", errors)}
+          {...useFieldProps("doseUnit", errors)}
           type="text"
           required
-          placeholder="Twice daily"
-          defaultValue={period?.schedule ?? ""}
+          placeholder="mg"
+          defaultValue={period?.doseUnit ?? ""}
           className={inputClass}
         />
       </Field>
+      {rows.map((row, position) => {
+        const rid = (field: string) => `${prefix}${field}-${row.key}`;
+        const amountError = rowError(row.key, "amount");
+        const whenError = rowError(row.key, "when");
+        return (
+          <div
+            key={row.key}
+            role="group"
+            aria-label={`Time ${position + 1}`}
+            data-dose-key={row.key}
+            className="flex flex-col gap-3"
+          >
+            {rows.length > 1 && <p className="text-base font-semibold text-muted">Time {position + 1}</p>}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="min-w-0">
+                <label htmlFor={rid("doseAmount")} className={labelClass}>
+                  Dose
+                </label>
+                <input
+                  id={rid("doseAmount")}
+                  name="doseAmount"
+                  aria-describedby={amountError ? `${rid("doseAmount")}-error` : undefined}
+                  type="text"
+                  inputMode="decimal"
+                  required={position === 0}
+                  defaultValue={row.amount}
+                  className={inputClass}
+                />
+                <FieldError id={`${rid("doseAmount")}-error`} message={amountError} />
+              </div>
+              <div className="min-w-0">
+                <label htmlFor={rid("doseWhen")} className={labelClass}>
+                  When
+                </label>
+                <input
+                  id={rid("doseWhen")}
+                  name="doseWhen"
+                  aria-describedby={whenError ? `${rid("doseWhen")}-error` : undefined}
+                  type="text"
+                  required={position === 0}
+                  placeholder="Morning"
+                  defaultValue={row.when}
+                  className={inputClass}
+                />
+                <FieldError id={`${rid("doseWhen")}-error`} message={whenError} />
+              </div>
+            </div>
+            {rows.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setRows((current) => current.filter((other) => other.key !== row.key))}
+                aria-label={`Remove time ${position + 1}`}
+                className={secondaryButton}
+              >
+                Remove
+              </button>
+            )}
+          </div>
+        );
+      })}
+      {rows.length < MAX_DOSE_TIMES && (
+        <button
+          type="button"
+          onClick={() => {
+            setRows((current) => [...current, { key: `dose-${nextKey}`, amount: "", when: "" }]);
+            setNextKey(nextKey + 1);
+          }}
+          className={secondaryButton}
+        >
+          Add a time
+        </button>
+      )}
     </>
   );
 }
@@ -217,7 +300,7 @@ function EditTarget({ period }: { period: PeriodView }) {
 }
 
 function ChangeDoseForm({ period, today, onDone }: { period: PeriodView; today: string; onDone: () => void }) {
-  const { state, errors, pending, submit, idPrefix } = useMedForm(changeMedicationAction, onDone);
+  const { state, errors, pending, submit, idPrefix, submittedKeys } = useMedForm(changeMedicationAction, onDone);
   return (
     <FormShell
       idPrefix={idPrefix}
@@ -230,7 +313,7 @@ function ChangeDoseForm({ period, today, onDone }: { period: PeriodView; today: 
       onCancel={onDone}
     >
       <EditTarget period={period} />
-      <DoseFields errors={errors} period={period} />
+      <DoseFields errors={errors} submittedKeys={submittedKeys} period={period} />
       <DateField name="effectiveDate" label="Starting" defaultValue={today} required errors={errors} />
       <NoteField errors={errors} defaultValue={period.note ?? ""} />
     </FormShell>
@@ -322,7 +405,7 @@ function DeletePeriod({ id, onDeleted }: { id: string; onDeleted: () => void }) 
 }
 
 function FixForm({ period, onDone }: { period: PeriodView; onDone: () => void }) {
-  const { state, errors, pending, submit, idPrefix } = useMedForm(correctPeriodAction, onDone);
+  const { state, errors, pending, submit, idPrefix, submittedKeys } = useMedForm(correctPeriodAction, onDone);
   const [role, setRole] = useState<MedicationRole | null>(period.role);
   return (
     <div className="flex flex-col gap-4">
@@ -349,7 +432,7 @@ function FixForm({ period, onDone }: { period: PeriodView; onDone: () => void })
           />
         </Field>
         <ToggleGroup name="role" label="Type" options={ROLE_OPTIONS} value={role} onChange={setRole} columns={2} error={errors.role} idPrefix={idPrefix} />
-        <DoseFields errors={errors} period={period} />
+        <DoseFields errors={errors} submittedKeys={submittedKeys} period={period} />
         <DateField name="startDate" label="Started" defaultValue={period.startDate} required errors={errors} />
         <DateField name="endDate" label="Ends (optional)" defaultValue={period.endDate ?? ""} required={false} errors={errors} />
         <NoteField errors={errors} defaultValue={period.note ?? ""} />
@@ -412,7 +495,7 @@ export function HistoryFix({ period }: { period: PeriodView }) {
 }
 
 function AddForm({ today, onDone }: { today: string; onDone: () => void }) {
-  const { state, errors, pending, submit, idPrefix } = useMedForm(startMedicationAction, onDone);
+  const { state, errors, pending, submit, idPrefix, submittedKeys } = useMedForm(startMedicationAction, onDone);
   const [role, setRole] = useState<MedicationRole | null>("maintenance");
   return (
     <FormShell
@@ -436,7 +519,7 @@ function AddForm({ today, onDone }: { today: string; onDone: () => void }) {
         />
       </Field>
       <ToggleGroup name="role" label="Type" options={ROLE_OPTIONS} value={role} onChange={setRole} columns={2} error={errors.role} idPrefix={idPrefix} />
-      <DoseFields errors={errors} />
+      <DoseFields errors={errors} submittedKeys={submittedKeys} />
       <DateField name="startDate" label="Started" defaultValue={today} required errors={errors} />
       <NoteField errors={errors} defaultValue="" />
     </FormShell>

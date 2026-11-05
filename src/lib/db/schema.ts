@@ -4,12 +4,14 @@ import {
   date,
   index,
   integer,
+  jsonb,
   numeric,
   pgTable,
   text,
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
+import type { DoseLine } from "@/lib/validation/medication";
 
 // created_at / updated_at have no SQL default: the data functions always set
 // them from a JS `new Date()` so the `updatedAt` a form sends back compares
@@ -103,9 +105,9 @@ export const medicationPeriods = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     drugName: text("drug_name").notNull(),
     role: text("role").notNull(),
-    doseAmount: numeric("dose_amount", { precision: 10, scale: 3 }).notNull(),
+    // One or more doses, each at its own time of day, in the order entered; all in `doseUnit`.
+    doses: jsonb("doses").$type<DoseLine[]>().notNull(),
     doseUnit: text("dose_unit").notNull(),
-    schedule: text("schedule").notNull(),
     startDate: date("start_date", { mode: "string" }).notNull(),
     // Exclusive; null = ongoing.
     endDate: date("end_date", { mode: "string" }),
@@ -115,6 +117,10 @@ export const medicationPeriods = pgTable(
   (table) => [
     check("medication_periods_role_check", sql`${table.role} in ('maintenance', 'rescue')`),
     check("medication_periods_end_after_start_check", sql`${table.endDate} > ${table.startDate}`),
+    check(
+      "medication_periods_doses_check",
+      sql`jsonb_typeof(${table.doses}) = 'array' and jsonb_array_length(${table.doses}) >= 1`,
+    ),
   ],
 );
 

@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { listCurrentMedications, listMedicationHistory, type MedicationPeriod } from "@/lib/data/medications";
 import { getDb } from "@/lib/db/client";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatDoses } from "@/lib/format";
 import { todayKey } from "@/lib/time";
 import { AddMedication, HistoryFix, MedicationActions, type PeriodView } from "./MedForms";
 
@@ -16,7 +16,7 @@ function endText(period: MedicationPeriod, history: MedicationPeriod[]): string 
   const key = period.drugName.trim().toLowerCase();
   const next = history.find((other) => other.drugName.trim().toLowerCase() === key && other.startDate === period.endDate);
   return next
-    ? `${next.doseAmount} ${next.doseUnit} from ${formatDate(period.endDate)}`
+    ? `${formatDoses(next.doses, next.doseUnit)} from ${formatDate(period.endDate)}`
     : `stops ${formatDate(period.endDate)}`;
 }
 
@@ -25,7 +25,7 @@ function MedicationCard({ period, today }: { period: PeriodView & { endText: str
     <li className="sw-card p-5">
       <p className="text-xl font-semibold">{period.drugName}</p>
       <p className="mt-1 text-lg">
-        {period.doseAmount} {period.doseUnit} · {period.schedule}
+        {formatDoses(period.doses, period.doseUnit)}
       </p>
       <p className="mt-1 text-base text-muted">
         since {formatDate(period.startDate)}
@@ -92,7 +92,7 @@ function History({ periods, today }: { periods: MedicationPeriod[]; today: strin
               {newestFirst.map((period) => (
                 <li key={period.id} className="border-t border-border pt-3">
                   <p className="text-base font-semibold">
-                    {period.doseAmount} {period.doseUnit} · {period.schedule}
+                    {formatDoses(period.doses, period.doseUnit)}
                   </p>
                   <p className="text-base text-muted">{periodDates(period, today)}</p>
                   {period.note && <p className="text-base text-muted">{period.note}</p>}

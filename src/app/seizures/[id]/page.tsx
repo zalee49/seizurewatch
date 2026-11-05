@@ -64,11 +64,14 @@ async function SeizureContent({ params }: { params: Promise<{ id: string }> }) {
         seizureId={seizure.id}
         seizureStartedAt={seizure.startedAt}
         responses={seizure.responses}
-        rescueMeds={rescueMeds.map((med) => ({
-          drugName: med.drugName,
-          doseAmount: med.doseAmount,
-          doseUnit: med.doseUnit,
-        }))}
+        rescueMeds={rescueMeds.flatMap((med) =>
+          med.doses.map((line) => ({
+            drugName: med.drugName,
+            doseAmount: line.amount,
+            doseUnit: med.doseUnit,
+            when: med.doses.length > 1 ? line.when : null,
+          })),
+        )}
       />
 
       <DeleteSeizure id={seizure.id} />

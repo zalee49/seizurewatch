@@ -14,8 +14,9 @@ import { getDb } from "@/lib/db/client";
 import { idSchema } from "@/lib/validation/seizure";
 
 // Form fields: hidden `id` and `expectedUpdatedAt` (ISO) on every edit form; `drugName`, `role`,
-// `doseAmount`, `doseUnit`, `schedule`, `startDate`, `endDate`, `note`, `effectiveDate`, `stopDate`
-// (dates as YYYY-MM-DD from `<input type="date">`).
+// `doseUnit`, `startDate`, `endDate`, `note`, `effectiveDate`, `stopDate` (dates as YYYY-MM-DD from
+// `<input type="date">`); and per dose row `doseAmount` and `doseWhen`, repeated in row order. Every
+// row must render both inputs so the repeated values line up by index.
 
 type PeriodResult = SaveResult<MedicationPeriod>;
 
@@ -31,14 +32,18 @@ function done<T>(result: SaveResult<T>): SaveResult<T> {
 }
 
 // A blank field is "not entered" (undefined); the schema decides what that means.
-function text(formData: FormData, name: string): string | undefined {
-  const value = formData.get(name);
+function blankToUndefined(value: FormDataEntryValue | null | undefined): string | undefined {
   return typeof value === "string" && value.trim() !== "" ? value : undefined;
 }
 
-function number(formData: FormData, name: string): number | undefined {
-  const value = text(formData, name);
-  return value === undefined ? undefined : Number(value);
+function text(formData: FormData, name: string): string | undefined {
+  return blankToUndefined(formData.get(name));
+}
+
+// A typed number that doesn't parse becomes NaN, which the schema refuses.
+function toNumber(value: FormDataEntryValue | undefined): number | undefined {
+  const typed = blankToUndefined(value);
+  return typed === undefined ? undefined : Number(typed);
 }
 
 // The record being edited: hidden `id` and the `expectedUpdatedAt` its form loaded.
@@ -52,10 +57,14 @@ function editTarget(formData: FormData): { id: string; expectedUpdatedAt: Date }
 
 // Missing fields pass through as undefined; the data layer's schema refuses them with a field error.
 function dose(formData: FormData) {
+  const amounts = formData.getAll("doseAmount");
+  const times = formData.getAll("doseWhen");
   return {
-    doseAmount: number(formData, "doseAmount") as number,
+    doses: Array.from({ length: Math.max(amounts.length, times.length) }, (_, index) => ({
+      amount: toNumber(amounts[index]),
+      when: blankToUndefined(times[index]),
+    })),
     doseUnit: text(formData, "doseUnit") as string,
-    schedule: text(formData, "schedule") as string,
     note: text(formData, "note"),
   };
 }

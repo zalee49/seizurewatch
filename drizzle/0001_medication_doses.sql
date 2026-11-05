@@ -1,0 +1,1 @@
+ALTER TABLE "medication_periods" ADD COLUMN "doses" jsonb;

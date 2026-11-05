@@ -1,15 +1,17 @@
 import { and, asc, eq, gt, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import type { Db } from "@/lib/db/client";
 import { medicationPeriods } from "@/lib/db/schema";
-import { formatDate } from "@/lib/format";
-import { fieldErrorsFrom, idSchema } from "@/lib/validation/seizure";
+import { formatDate, formatDoses } from "@/lib/format";
+import { idSchema } from "@/lib/validation/seizure";
 import {
   correctPeriodSchema,
   dayKeySchema,
   doseSchema,
+  medicationFieldErrors,
   startMedicationSchema,
   type CorrectPeriodInput,
   type DoseInput,
+  type DoseLine,
   type MedicationRole,
   type StartMedicationInput,
 } from "@/lib/validation/medication";
@@ -19,9 +21,9 @@ export type MedicationPeriod = {
   id: string;
   drugName: string;
   role: MedicationRole;
-  doseAmount: number;
+  // In the order entered; every amount is in `doseUnit`.
+  doses: DoseLine[];
   doseUnit: string;
-  schedule: string;
   startDate: string;
   // Exclusive; null = ongoing.
   endDate: string | null;
@@ -56,8 +58,8 @@ const conflict = (): SaveResult<never> => ({
   error: "conflict",
   message: `${CONFLICT_MESSAGE} ${NOTHING_SAVED}`,
 });
-const invalidFields = (error: Parameters<typeof fieldErrorsFrom>[0]) =>
-  refuse("invalid", "Check the fields marked below.", fieldErrorsFrom(error));
+const invalidFields = (error: Parameters<typeof medicationFieldErrors>[0]) =>
+  refuse("invalid", "Check the fields marked below.", medicationFieldErrors(error));
 
 // Thrown inside a transaction to roll it back and return this refusal instead.
 class Refusal extends Error {
@@ -77,9 +79,8 @@ function toPeriod(row: PeriodRow): MedicationPeriod {
     drugName: row.drugName,
     // Mapped by hand: a value from an older schema reads as maintenance, never an error.
     role: row.role === "rescue" ? "rescue" : "maintenance",
-    doseAmount: Number(row.doseAmount),
+    doses: row.doses.map((dose) => ({ amount: Number(dose.amount), when: String(dose.when) })),
     doseUnit: row.doseUnit,
-    schedule: row.schedule,
     startDate: row.startDate,
     endDate: row.endDate,
     note: row.note,
@@ -162,9 +163,8 @@ export async function startMedication(db: Db, input: StartMedicationInput): Prom
       .values({
         drugName: details.drugName,
         role: details.role,
-        doseAmount: String(details.doseAmount),
+        doses: details.doses,
         doseUnit: details.doseUnit,
-        schedule: details.schedule,
         startDate: details.startDate,
         endDate: null,
         note: details.note,
@@ -191,7 +191,7 @@ export async function changeMedication(
   if (!parsedDate.success) {
     return refuse("invalid", "Check the fields marked below.", {
       effectiveDate: "Enter a valid date",
-      ...(parsedDose.success ? {} : fieldErrorsFrom(parsedDose.error)),
+      ...(parsedDose.success ? {} : medicationFieldErrors(parsedDose.error)),
     });
   }
   if (!parsedDose.success) return invalidFields(parsedDose.error);
@@ -222,9 +222,8 @@ export async function changeMedication(
       .values({
         drugName: old.drugName,
         role: old.role,
-        doseAmount: String(dose.doseAmount),
+        doses: dose.doses,
         doseUnit: dose.doseUnit,
-        schedule: dose.schedule,
         startDate: effectiveDate,
         endDate: old.endDate,
         note: dose.note,
@@ -291,9 +290,8 @@ export async function correctPeriod(
       .set({
         drugName: details.drugName,
         role: details.role,
-        doseAmount: String(details.doseAmount),
+        doses: details.doses,
         doseUnit: details.doseUnit,
-        schedule: details.schedule,
         startDate: details.startDate,
         endDate: details.endDate,
         note: details.note,
@@ -338,8 +336,38 @@ export async function listMedicationHistory(db: Db): Promise<MedicationPeriod[]>
   return rows.map(toPeriod);
 }
 
+// "60 mg" for a single time (its schedule left out, as on the calendar so far); every time for several.
 function formatDose(period: MedicationPeriod): string {
-  return `${period.doseAmount} ${period.doseUnit}`;
+  return period.doses.length === 1 ? `${period.doses[0].amount} ${period.doseUnit}` : formatDoses(period.doses, period.doseUnit);
+}
+
+function sameDoses(a: MedicationPeriod, b: MedicationPeriod): boolean {
+  return a.doseUnit === b.doseUnit && a.doses.length === b.doses.length &&
+    a.doses.every((dose, index) => dose.amount === b.doses[index].amount && dose.when === b.doses[index].when);
+}
+
+// What a dose change changed, after the drug name. Same unit and times: only the amounts that
+// moved ("evening 625 mg → 750 mg"). One time with a new schedule: "75 mg: twice daily → three times daily".
+function describeChange(before: MedicationPeriod, after: MedicationPeriod): string {
+  if (sameDoses(before, after)) return formatDose(after);
+  const unit = after.doseUnit;
+  const sameTimes = before.doseUnit === unit && before.doses.length === after.doses.length &&
+    before.doses.every((dose, index) => dose.when === after.doses[index].when);
+  if (sameTimes) {
+    if (after.doses.length === 1) return `${before.doses[0].amount} ${unit} → ${after.doses[0].amount} ${unit}`;
+    return after.doses
+      .flatMap((dose, index) => {
+        const was = before.doses[index].amount;
+        return was === dose.amount ? [] : [`${dose.when} ${was} ${unit} → ${dose.amount} ${unit}`];
+      })
+      .join(", ");
+  }
+  if (before.doses.length === 1 && after.doses.length === 1) {
+    return formatDose(before) === formatDose(after)
+      ? `${formatDose(after)}: ${before.doses[0].when} → ${after.doses[0].when}`
+      : `${formatDose(before)} → ${formatDose(after)}`;
+  }
+  return `${formatDoses(before.doses, before.doseUnit)} → ${formatDoses(after.doses, unit)}`;
 }
 
 // Starts, dose changes and stops dated in [fromDate, toDate), by date then drug name.
@@ -352,17 +380,11 @@ export async function listMedicationChanges(db: Db, fromDate: string, toDate: st
     const sameDrug = periods.filter((other) => other.id !== period.id && drugKey(other.drugName) === drugKey(period.drugName));
     const predecessor = sameDrug.find((other) => other.endDate === period.startDate);
     if (predecessor) {
-      const sameDose = formatDose(predecessor) === formatDose(period);
-      const sameSchedule = predecessor.schedule === period.schedule;
       changes.push({
         date: period.startDate,
         drugName: period.drugName,
         kind: "changed",
-        description: !sameDose
-          ? `${period.drugName} ${formatDose(predecessor)} → ${formatDose(period)}`
-          : sameSchedule
-            ? `${period.drugName} ${formatDose(period)}`
-            : `${period.drugName} ${formatDose(period)}: ${predecessor.schedule} → ${period.schedule}`,
+        description: `${period.drugName} ${describeChange(predecessor, period)}`,
       });
     } else {
       changes.push({

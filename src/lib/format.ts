@@ -52,3 +52,8 @@ const monthFormat = new Intl.DateTimeFormat("en-US", { month: "long", year: "num
 export function formatMonth(year: number, month1to12: number): string {
   return monthFormat.format(new Date(Date.UTC(year, month1to12 - 1, 1)));
 }
+
+// "500 mg morning, 625 mg evening", or "60 mg twice daily" for one time.
+export function formatDoses(doses: { amount: number; when: string }[], unit: string): string {
+  return doses.map((dose) => `${dose.amount} ${unit} ${dose.when}`).join(", ");
+}
