@@ -19,11 +19,11 @@ function period(overrides: Partial<MedicationPeriod> & Pick<MedicationPeriod, "d
   };
 }
 
-function seizureAt(iso: string, responses: SeizureResponse[] = []): Seizure {
+function seizureAt(iso: string, responses: SeizureResponse[] = [], endedIso: string | null = null): Seizure {
   return {
     id: crypto.randomUUID(),
     startedAt: new Date(iso),
-    endedAt: null,
+    endedAt: endedIso ? new Date(endedIso) : null,
     seizureType: null,
     severity: null,
     beforeSymptoms: null,
@@ -114,7 +114,24 @@ describe("buildDayTimeline", () => {
 
   it("puts a 10:30 PM EST seizure at minute 1350 on its household day", () => {
     const seizure = seizureAt("2026-11-06T03:30:00Z"); // 10:30 PM EST on Nov 5
-    expect(buildDayTimeline(DAY, [seizure], []).seizures).toEqual([{ id: seizure.id, minute: 1350, severity: null }]);
+    expect(buildDayTimeline(DAY, [seizure], []).seizures).toEqual([
+      { id: seizure.id, minute: 1350, severity: null, durationSeconds: null },
+    ]);
+  });
+
+  it("gives an ended seizure its duration in whole seconds", () => {
+    const seizure = seizureAt("2026-11-05T14:00:00-05:00", [], "2026-11-05T14:03:30-05:00");
+    expect(buildDayTimeline(DAY, [seizure], []).seizures[0].durationSeconds).toBe(210);
+  });
+
+  it("gives an unended seizure no duration", () => {
+    const seizure = seizureAt("2026-11-05T14:00:00-05:00");
+    expect(buildDayTimeline(DAY, [seizure], []).seizures[0].durationSeconds).toBeNull();
+  });
+
+  it("gives a seizure longer than the maximum no duration", () => {
+    const seizure = seizureAt("2026-11-05T14:00:00-05:00", [], "2026-11-05T16:00:01-05:00");
+    expect(buildDayTimeline(DAY, [seizure], []).seizures[0].durationSeconds).toBeNull();
   });
 
   it("excludes a seizure from another day", () => {

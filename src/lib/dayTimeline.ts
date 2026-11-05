@@ -2,7 +2,7 @@ import type { MedicationPeriod } from "@/lib/data/medications";
 import type { Seizure } from "@/lib/data/seizures";
 import { formatDate, formatTime } from "@/lib/format";
 import { dayKey, minuteOfDay } from "@/lib/time";
-import type { Severity } from "@/lib/validation/seizure";
+import { MAX_SEIZURE_SECONDS, type Severity } from "@/lib/validation/seizure";
 
 // The household's fixed dose times (DL-D1), in minutes after midnight, by lower-case trimmed label.
 // A label missing here is listed, not drawn: extend this table rather than guessing.
@@ -14,7 +14,7 @@ export const DOSE_LABEL_TIMES: Record<string, number[]> = {
 };
 
 export type DayTimeline = {
-  seizures: { id: string; minute: number; severity: Severity | null }[];
+  seizures: { id: string; minute: number; severity: Severity | null; durationSeconds: number | null }[];
   scheduled: { minute: number; drugName: string; amount: number; doseUnit: string; when: string }[];
   rescue: { minute: number; medicationName: string; doseAmount: number | null; doseUnit: string | null }[];
   // Ready-to-show lines for anything that could not be placed.
@@ -59,7 +59,18 @@ export function buildDayTimeline(day: string, seizures: Seizure[], periods: Medi
 
   for (const seizure of seizures) {
     if (dayKey(seizure.startedAt) !== day) continue;
-    timeline.seizures.push({ id: seizure.id, minute: minuteOfDay(seizure.startedAt), severity: seizure.severity });
+    // A negative or implausibly long span is bad data; show no duration rather than a wrong one.
+    let durationSeconds: number | null = null;
+    if (seizure.endedAt) {
+      const seconds = Math.round((seizure.endedAt.getTime() - seizure.startedAt.getTime()) / 1000);
+      if (seconds >= 0 && seconds <= MAX_SEIZURE_SECONDS) durationSeconds = seconds;
+    }
+    timeline.seizures.push({
+      id: seizure.id,
+      minute: minuteOfDay(seizure.startedAt),
+      severity: seizure.severity,
+      durationSeconds,
+    });
     for (const response of seizure.responses) {
       if (response.kind !== "rescue_med") continue;
       const name = response.medicationName ?? NO_NAME;

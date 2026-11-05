@@ -141,7 +141,7 @@ function DayList({
       <h2 id="day-heading" className="text-xl font-semibold">
         {formatDate(day)}
       </h2>
-      <DayTimeline timeline={timeline} />
+      <DayTimeline timeline={timeline} dateLabel={formatDate(day)} />
       {timeline.notPlaced.length > 0 && (
         <ul className="flex flex-col gap-1 text-base text-muted">
           {timeline.notPlaced.map((line, index) => (
