@@ -3,6 +3,7 @@ import {
   dayKey,
   daysBetween,
   householdDateTimeValue,
+  minuteOfDay,
   monthBounds,
   parseHouseholdDateTime,
   todayKey,
@@ -72,5 +73,26 @@ describe("householdDateTimeValue", () => {
     expect(parseHouseholdDateTime(householdDateTimeValue(new Date("2026-06-10T18:30:45Z")))?.toISOString()).toBe(
       "2026-06-10T18:30:45.000Z",
     );
+  });
+});
+
+describe("minuteOfDay", () => {
+  it("reads household clock time, not UTC", () => {
+    expect(minuteOfDay(new Date("2026-06-10T04:00:00Z"))).toBe(0); // midnight EDT
+    expect(minuteOfDay(new Date("2026-12-10T19:30:00Z"))).toBe(14 * 60 + 30); // 2:30 PM EST
+    expect(minuteOfDay(new Date("2026-12-11T04:59:00Z"))).toBe(23 * 60 + 59);
+  });
+
+  it("keeps clock time across the March spring-forward (6 AM is 6 AM on both sides)", () => {
+    expect(minuteOfDay(new Date("2026-03-07T11:00:00Z"))).toBe(360); // 6:00 AM EST
+    expect(minuteOfDay(new Date("2026-03-08T10:00:00Z"))).toBe(360); // 6:00 AM EDT, after the change
+    expect(minuteOfDay(new Date("2026-03-08T06:59:00Z"))).toBe(119); // 1:59 AM EST, just before it
+    expect(minuteOfDay(new Date("2026-03-08T07:00:00Z"))).toBe(180); // 3:00 AM EDT, 2:xx never happens
+  });
+
+  it("places both 1 AM hours of the November fall-back by clock time", () => {
+    expect(minuteOfDay(new Date("2026-11-01T05:30:00Z"))).toBe(90); // 1:30 AM EDT
+    expect(minuteOfDay(new Date("2026-11-01T06:30:00Z"))).toBe(90); // 1:30 AM EST, the second time
+    expect(minuteOfDay(new Date("2026-11-01T11:00:00Z"))).toBe(360); // 6:00 AM EST
   });
 });

@@ -10,6 +10,13 @@ export function dayKey(instant: Date): string {
   return format(new TZDate(instant, HOUSEHOLD_TIME_ZONE), "yyyy-MM-dd");
 }
 
+// The household clock time of an instant, in minutes after midnight (0-1439). Clock time, not elapsed
+// time: on a DST change day the two 1:xx AM hours both give 60-119.
+export function minuteOfDay(date: Date): number {
+  const local = new TZDate(date, HOUSEHOLD_TIME_ZONE);
+  return local.getHours() * 60 + local.getMinutes();
+}
+
 export function todayKey(now: Date = new Date()): string {
   return dayKey(now);
 }

@@ -4,12 +4,15 @@ import { connection } from "next/server";
 import Icon from "@/components/Icon";
 import PageHeading from "@/components/PageHeading";
 import { buildMonthGrid, monthLength, monthStats, type Day } from "@/lib/calendar";
-import { listMedicationChanges, type MedicationChange } from "@/lib/data/medications";
+import { listCurrentMedications, listMedicationChanges, type MedicationChange } from "@/lib/data/medications";
 import { listSeizuresBetween, type Seizure } from "@/lib/data/seizures";
 import { getDb } from "@/lib/db/client";
+import { buildDayTimeline, type DayTimeline as DayTimelineData } from "@/lib/dayTimeline";
 import { formatDate, formatDuration, formatMonth, formatTime } from "@/lib/format";
 import { dayKey, monthBounds, todayKey } from "@/lib/time";
 import { MAX_SEIZURE_SECONDS, type Severity } from "@/lib/validation/seizure";
+
+import { DayTimeline } from "./DayTimeline";
 
 type Month = { year: number; month: number };
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -121,13 +124,31 @@ function DayCell({ day, month, today, selected }: { day: Day; month: Month; toda
   );
 }
 
-function DayList({ day, seizures, medChanges }: { day: string; seizures: Seizure[]; medChanges: MedicationChange[] }) {
+function DayList({
+  day,
+  seizures,
+  medChanges,
+  timeline,
+}: {
+  day: string;
+  seizures: Seizure[];
+  medChanges: MedicationChange[];
+  timeline: DayTimelineData;
+}) {
   const onDay = seizures.filter((seizure) => dayKey(seizure.startedAt) === day);
   return (
     <section aria-labelledby="day-heading" className="sw-card flex flex-col gap-3 p-5">
       <h2 id="day-heading" className="text-xl font-semibold">
         {formatDate(day)}
       </h2>
+      <DayTimeline timeline={timeline} />
+      {timeline.notPlaced.length > 0 && (
+        <ul className="flex flex-col gap-1 text-base text-muted">
+          {timeline.notPlaced.map((line, index) => (
+            <li key={index}>{line}</li>
+          ))}
+        </ul>
+      )}
       {medChanges.length > 0 && (
         <ul className="flex flex-col gap-2">
           {medChanges.map((change) => (
@@ -184,6 +205,9 @@ async function CalendarContent({ searchParams }: { searchParams: SearchParams })
   const medChanges = await listMedicationChanges(getDb(), `${monthParam(shown)}-01`, `${monthParam(next)}-01`);
   const { weeks } = buildMonthGrid(shown.year, shown.month, seizures, medChanges);
   const dayInMonth = selectedDay?.startsWith(monthParam(shown)) ? selectedDay : null;
+  const timeline = dayInMonth
+    ? buildDayTimeline(dayInMonth, seizures, await listCurrentMedications(getDb(), dayInMonth))
+    : null;
 
   const arrowClass = "hover:border-brand hover:text-brand flex size-12 items-center justify-center rounded-xl border-2 border-border bg-surface text-2xl";
   return (
@@ -235,9 +259,10 @@ async function CalendarContent({ searchParams }: { searchParams: SearchParams })
         </p>
       </section>
 
-      {dayInMonth ? (
+      {dayInMonth && timeline ? (
         <DayList
           day={dayInMonth}
+          timeline={timeline}
           seizures={seizures}
           medChanges={weeks.flat().find((day) => day.key === dayInMonth)?.medChanges ?? []}
         />
