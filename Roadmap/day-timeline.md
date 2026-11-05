@@ -104,7 +104,8 @@ Small effort: one chart and one pure function on data the calendar already loads
 
 - [x] `phase-review` by a reviewer the operator chooses, from a model family that built none of Phase 1 where one is available.
   - 2026-11-05, DeepSeek (deepseek-flash): B+, F1–F3 fixed, F4 left to the operator (an unrelated home-page quick-link removal sits in the same working tree); DL1.1 and the fixes are uncommitted on `main`.
-- [ ] Operator deploys Phase 1 (no migration).
+- [x] Operator deploys Phase 1 (no migration).
+  - Deployed 2026-11-05 by pushing `main` (caedf75), on the operator's yes; Vercel built it from the push, and the live calendar draws the timeline. Phone acceptance is still pending.
 
 ---
 
