@@ -7,6 +7,7 @@ import {
   jsonb,
   numeric,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uuid,
@@ -121,6 +122,24 @@ export const medicationPeriods = pgTable(
       "medication_periods_doses_check",
       sql`jsonb_typeof(${table.doses}) = 'array' and jsonb_array_length(${table.doses}) >= 1`,
     ),
+  ],
+);
+
+// When a daily dose was actually given on one day, if not at its usual time. Minutes are household
+// clock time after midnight; `usual_minute` is the slot's fixed time (DOSE_LABEL_TIMES), so every
+// drug given in that slot moves together. No row means it was given at the usual time.
+export const doseTimes = pgTable(
+  "dose_times",
+  {
+    day: date("day", { mode: "string" }).notNull(),
+    usualMinute: integer("usual_minute").notNull(),
+    givenMinute: integer("given_minute").notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    primaryKey({ columns: [table.day, table.usualMinute] }),
+    check("dose_times_usual_minute_check", sql`${table.usualMinute} between 0 and 1439`),
+    check("dose_times_given_minute_check", sql`${table.givenMinute} between 0 and 1439`),
   ],
 );
 

@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import Icon from "@/components/Icon";
 import PageHeading from "@/components/PageHeading";
 import { buildMonthGrid, monthLength, monthStats, type Day } from "@/lib/calendar";
+import { listDoseTimes } from "@/lib/data/doseTimes";
 import { listCurrentMedications, listMedicationChanges, type MedicationChange } from "@/lib/data/medications";
 import { listSeizuresBetween, type Seizure } from "@/lib/data/seizures";
 import { getDb } from "@/lib/db/client";
@@ -161,6 +162,7 @@ function DayList({
         </ul>
       )}
       <DayAgenda
+        day={day}
         rows={buildDayAgenda(timeline)}
         durationTexts={Object.fromEntries(onDay.map((seizure) => [seizure.id, durationText(seizure)]))}
       />
@@ -183,7 +185,12 @@ async function CalendarContent({ searchParams }: { searchParams: SearchParams })
   const { weeks } = buildMonthGrid(shown.year, shown.month, seizures, medChanges);
   const dayInMonth = selectedDay?.startsWith(monthParam(shown)) ? selectedDay : null;
   const timeline = dayInMonth
-    ? buildDayTimeline(dayInMonth, seizures, await listCurrentMedications(getDb(), dayInMonth))
+    ? buildDayTimeline(
+        dayInMonth,
+        seizures,
+        await listCurrentMedications(getDb(), dayInMonth),
+        await listDoseTimes(getDb(), dayInMonth),
+      )
     : null;
 
   const arrowClass = "hover:border-brand hover:text-brand flex size-12 items-center justify-center rounded-xl border-2 border-border bg-surface text-2xl";

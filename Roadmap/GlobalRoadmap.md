@@ -67,6 +67,10 @@ time.
 - **No access protection** (2026-11-04). No login, passcode or secret link: anyone with
   the address can view and edit. Accepted because the data isn't sensitive; can be
   revisited if the site is ever found and misused.
+- **Daily doses can be moved on a given day** (2026-11-07). The 6 AM and 6 PM doses are
+  assumed given on time; from a calendar day either of us can record that a dose slot
+  was given at another time, and every drug in that slot moves together. Setting it
+  back to the usual time clears the record.
 - **One dog** (2026-11-04). A single profile and no dog picker. Supporting more dogs
   later is a one-time data migration.
 - **Vet summary comes after version 1** (2026-11-04). Build and use the four sections

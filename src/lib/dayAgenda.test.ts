@@ -9,8 +9,9 @@ function timeline(parts: Partial<DayTimeline>): DayTimeline {
   return { seizures: [], scheduled: [], rescue: [], notPlaced: [], ...parts };
 }
 
-const dose = (minute: number, drugName: string, amount: number) => ({
+const dose = (minute: number, drugName: string, amount: number, usualMinute = minute) => ({
   minute,
+  usualMinute,
   drugName,
   amount,
   doseUnit: "mg",
@@ -34,7 +35,22 @@ describe("buildDayAgenda", () => {
 
   it("puts every daily dose at one minute in one row", () => {
     const rows = buildDayAgenda(timeline({ scheduled: [dose(360, "Keppra XR", 1000), dose(360, "Phenobarbital", 75)] }));
-    expect(rows).toEqual([{ kind: "doses", minute: 360, lines: ["Keppra XR 1000 mg", "Phenobarbital 75 mg"] }]);
+    expect(rows).toEqual([
+      { kind: "doses", minute: 360, usualMinute: 360, lines: ["Keppra XR 1000 mg", "Phenobarbital 75 mg"] },
+    ]);
+  });
+
+  it("puts a moved dose slot at the time it was given", () => {
+    const rows = buildDayAgenda(
+      timeline({ scheduled: [dose(400, "Keppra XR", 1000, 360), dose(400, "Phenobarbital", 75, 360)], seizures: [seizure("a", 380)] }),
+    );
+    expect(kinds(rows)).toEqual(["seizure", "gap", "doses"]);
+    expect(rows[2]).toEqual({ kind: "doses", minute: 400, usualMinute: 360, lines: ["Keppra XR 1000 mg", "Phenobarbital 75 mg"] });
+  });
+
+  it("keeps two slots moved to the same minute as separate rows", () => {
+    const rows = buildDayAgenda(timeline({ scheduled: [dose(720, "Keppra XR", 1000, 360), dose(720, "Keppra XR", 1000, 1080)] }));
+    expect(rows.filter((row) => row.kind === "doses").map((row) => row.kind === "doses" && row.usualMinute)).toEqual([360, 1080]);
   });
 
   it("orders ties as doses, then rescue, then seizure", () => {
@@ -110,7 +126,7 @@ describe("buildDayAgenda", () => {
 
   it("exposes the since-last label to screen readers", () => {
     const rows = buildDayAgenda(timeline({ seizures: [seizure("a", 600), seizure("b", 600)] }));
-    const html = renderToStaticMarkup(createElement(DayAgenda, { rows, durationTexts: { a: "Still going", b: "Still going" } }));
+    const html = renderToStaticMarkup(createElement(DayAgenda, { day: "2026-11-05", rows, durationTexts: { a: "Still going", b: "Still going" } }));
     const gap = [...html.matchAll(/<li\b[^>]*>[^]*?<\/li>/g)].find(([item]) => item.includes("same minute"))?.[0];
     expect(gap).toBeDefined();
     expect(gap).not.toContain('aria-hidden="true"');

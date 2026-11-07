@@ -15,7 +15,8 @@ export const DOSE_LABEL_TIMES: Record<string, number[]> = {
 
 export type DayTimeline = {
   seizures: { id: string; minute: number; severity: Severity | null; durationSeconds: number | null }[];
-  scheduled: { minute: number; drugName: string; amount: number; doseUnit: string; when: string }[];
+  // `minute` is when it was given; `usualMinute` is its slot's fixed time (the same unless moved).
+  scheduled: { minute: number; usualMinute: number; drugName: string; amount: number; doseUnit: string; when: string }[];
   rescue: { minute: number; medicationName: string; doseAmount: number | null; doseUnit: string | null }[];
   // Ready-to-show lines for anything that could not be placed.
   notPlaced: string[];
@@ -27,7 +28,13 @@ function doseText(amount: number | null, unit: string | null): string {
   return amount === null ? "" : ` ${amount}${unit ? ` ${unit}` : ""}`;
 }
 
-export function buildDayTimeline(day: string, seizures: Seizure[], periods: MedicationPeriod[]): DayTimeline {
+// `doseTimes` maps a slot's usual minute to the minute it was actually given that day (listDoseTimes).
+export function buildDayTimeline(
+  day: string,
+  seizures: Seizure[],
+  periods: MedicationPeriod[],
+  doseTimes: Map<number, number> = new Map(),
+): DayTimeline {
   const timeline: DayTimeline = { seizures: [], scheduled: [], rescue: [], notPlaced: [] };
 
   for (const period of periods) {
@@ -47,7 +54,8 @@ export function buildDayTimeline(day: string, seizures: Seizure[], periods: Medi
       }
       for (const minute of minutes) {
         timeline.scheduled.push({
-          minute,
+          minute: doseTimes.get(minute) ?? minute,
+          usualMinute: minute,
           drugName: period.drugName,
           amount: dose.amount,
           doseUnit: period.doseUnit,

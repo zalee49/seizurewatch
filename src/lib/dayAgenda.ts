@@ -7,7 +7,7 @@ export const BREAK_MINUTES = 60;
 export const CLUSTER_MINUTES = 60;
 
 export type AgendaRow =
-  | { kind: "doses"; minute: number; lines: string[] }
+  | { kind: "doses"; minute: number; usualMinute: number; lines: string[] }
   | { kind: "rescue"; minute: number; text: string }
   | {
       kind: "seizure";
@@ -54,15 +54,17 @@ function clusterStarts(seizures: Seizure[]): Map<string, Extract<AgendaRow, { ki
 }
 
 export function buildDayAgenda(timeline: DayTimeline): AgendaRow[] {
-  const dosesByMinute = new Map<number, string[]>();
+  // Grouped by slot, so two slots moved to the same minute stay separate rows that each move on their own.
+  const dosesBySlot = new Map<number, { minute: number; lines: string[] }>();
   for (const dose of timeline.scheduled) {
     const line = `${dose.drugName} ${dose.amount} ${dose.doseUnit}`;
-    dosesByMinute.set(dose.minute, [...(dosesByMinute.get(dose.minute) ?? []), line]);
+    const slot = dosesBySlot.get(dose.usualMinute) ?? { minute: dose.minute, lines: [] };
+    dosesBySlot.set(dose.usualMinute, { ...slot, lines: [...slot.lines, line] });
   }
 
   const seizures = [...timeline.seizures].sort((a, b) => a.minute - b.minute);
   const events: EventRow[] = [
-    ...[...dosesByMinute].map(([minute, lines]): EventRow => ({ kind: "doses", minute, lines })),
+    ...[...dosesBySlot].map(([usualMinute, { minute, lines }]): EventRow => ({ kind: "doses", minute, usualMinute, lines })),
     ...timeline.rescue.map(
       (dose): EventRow => ({
         kind: "rescue",

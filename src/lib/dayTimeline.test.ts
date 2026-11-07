@@ -56,6 +56,19 @@ describe("buildDayTimeline", () => {
     expect(scheduled[0]).toMatchObject({ drugName: "Keppra XR", amount: 1000, doseUnit: "mg", when: "Twice daily" });
   });
 
+  it("moves a slot to the time it was given that day, keeping its usual time", () => {
+    const { scheduled } = buildDayTimeline(
+      DAY,
+      [],
+      [period({ doses: [{ amount: 1000, when: "Twice daily" }] })],
+      new Map([[1080, 1150]]),
+    );
+    expect(scheduled.map((dose) => [dose.minute, dose.usualMinute])).toEqual([
+      [360, 360],
+      [1150, 1080],
+    ]);
+  });
+
   it("places a Dinner dose at 1080", () => {
     const { scheduled, notPlaced } = buildDayTimeline(DAY, [], [period({ doses: [{ amount: 625, when: " Dinner " }] })]);
     expect(scheduled.map((dose) => dose.minute)).toEqual([1080]);

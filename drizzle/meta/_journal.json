@@ -36,6 +36,13 @@
       "when": 1793901605625,
       "tag": "0004_more_seizure_types",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794062263709,
+      "tag": "0005_dose_times",
+      "breakpoints": true
     }
   ]
 }
